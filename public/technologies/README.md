@@ -1,0 +1,5 @@
+# Technology marks
+
+Most marks are static SVGs from [Simple Icons](https://github.com/simple-icons/simple-icons), colored with the brand's catalog color; selected multicolor marks use [Devicon](https://github.com/devicons/devicon), the Microsoft four-color mark is kept in its official palette, and the Playwright mark comes from [Playwright's site](https://playwright.dev/img/playwright-logo.svg). They are copied into the repository so public pages do not hotlink third-party artwork. The catalog is deliberately broad and is grouped in `src/lib/tech-stack.ts`; only tools selected in the profile editor are shown to visitors.
+
+Brand icons remain subject to the rights and usage guidance for their respective brands. Simple Icons explains that its own project license does not automatically apply to every brand mark in its [disclaimer](https://github.com/simple-icons/simple-icons/blob/develop/DISCLAIMER.md). Devicon's source assets are covered by its [license and disclaimer](https://github.com/devicons/devicon). Check brand-specific guidance before changing how these marks are used.

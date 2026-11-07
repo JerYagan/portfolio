@@ -1,0 +1,2 @@
+-- The initial profile row and empty starter categories are inserted by the first migration
+-- so they also exist in a newly migrated hosted project. No sample portfolio entries are seeded.
