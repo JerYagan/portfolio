@@ -1,42 +1,56 @@
 # Next steps
 
-This checklist continues from the current implementation. The immediate blocker is that the Supabase project queried by the local app does not have the `completed_on` and `presentation` entry columns. A clean local server reload and the additive migrations are needed to finish verification and use logofolio entries.
+This checklist tracks the remaining verification and release work after the local runtime and logofolio layout updates.
 
 ## 1. Reload and verify the local app
 
-- [ ] Stop and restart the local Next.js development server so it loads the latest schema-fallback changes.
-- [ ] Open `/` and confirm the page renders without the `PortfolioDataError` screen.
-- [ ] Open `/api/portfolio/entries` and confirm it returns a successful JSON response, including an empty list when there is no published work.
-- [ ] If either request still fails, inspect the local Next.js server log for the development-only `[portfolio-data]` diagnostic and resolve the reported Supabase read error before continuing.
+- [x] Stop and restart the local Next.js development server so it loads the latest changes.
+- [x] Open `/` and confirm the page renders without the `PortfolioDataError` screen (HTTP 200).
+- [x] Open `/api/portfolio/entries` and confirm it returns successful JSON (HTTP 200; two published entries).
+- [x] Open `/work/november-2026-logofolio` and confirm the detail route renders (HTTP 200).
+- [x] Check the server log for data-read errors after restart; none appeared during these requests.
 
-## 2. Bring Supabase up to date
+## 2. Confirm the Supabase schema
 
-In the Supabase project connected to `.env.local`, inspect the `public.portfolio_entries` columns. Apply any missing migration using the Supabase SQL Editor, in timestamp order:
+Read-only checks against the project configured in `.env.local` show that `presentation` is available on `public.portfolio_entries`. Selecting `completed_on` returns a schema error, so the completion-date migration is still needed. No database write was made.
 
-1. `supabase/migrations/20261108010000_profile_tech_and_entry_completion.sql`
-2. `supabase/migrations/20261108020000_entry_presentation_layout.sql`
+- [x] Confirm `presentation` is available to the public API role.
+- [ ] Apply `supabase/migrations/20261108010000_profile_tech_and_entry_completion.sql` in the Supabase Dashboard SQL Editor and verify `completed_on` is available.
+- [x] Confirm `presentation` is available; verify migration history in the Dashboard if needed.
+- [x] Keep the code's backward-compatible `standard` fallback for older schemas.
 
-Confirm that `completed_on` and `presentation` exist afterward. Do not run these migrations against a different project by mistake. Keep the code's backward-compatible `standard` fallback for older schemas.
+Apply only the missing migration, in timestamp order, to the project connected to `.env.local`. The configured project is Production, so review its target and backup status before writing. The Supabase CLI is not authenticated; this agent did not apply the SQL.
 
-## 3. Create and review a logofolio entry
+## 3. Review the existing logofolio entry
 
-- [ ] Add or choose a portfolio category for logofolios in the CMS. Category names remain editable and do not control the entry layout.
-- [ ] Create an entry and set **Project presentation** to **Logofolio**.
-- [ ] Set a thumbnail for the work card, then upload the tall presentation board first in the ordered gallery and upload logo variations after it.
-- [ ] Select the tools used and enter the year, short description, and alt text for each image.
-- [ ] Save as a draft first. Review the public layout with a real entry before publishing it.
-- [ ] Confirm the title/category/year, full-height board, colored tool marks, masonry logo gallery, image-only modal, plain close icon, and outside-click/Escape dismissal.
+The public API already contains `november-2026-logofolio`, and its detail route returns HTTP 200. Do not create a duplicate. Review the current entry in the CMS and retain its content unless you intend to replace its placeholder values with final copy and artwork.
+
+- [x] Confirm an existing public entry uses the logofolio slug and has a thumbnail.
+- [x] Confirm its Graphic Design category, Logofolio presentation, and current first image in the CMS.
+- [x] Confirm the current board has alternative text; the entry has no additional logo variation images yet.
+- [ ] Confirm the selected tool names and completion year/date are accurate.
+- [x] Review the full-width board on desktop and mobile; the board matches the page container without horizontal overflow.
+- [x] Review an existing project image modal: image-only presentation, blurred/dark backdrop, plain close icon, outside-click dismissal, and Escape dismissal.
+- [ ] Review a populated logofolio logo gallery; the existing logofolio entry currently has no logo variation images.
 
 ## 4. Finish public and CMS acceptance
 
-- [ ] Check the logofolio and standard project detail pages on desktop and narrow mobile screens.
-- [ ] Check light, dark, and system themes, keyboard navigation, visible focus, and reduced-motion behavior.
-- [ ] Confirm the entries API and public pages include published work only; confirm drafts stay private.
-- [ ] Verify the signed-out admin redirect and tool search/selection in the CMS.
-- [ ] Update `docs/PLAN.md` with actual results; leave anything not manually checked unchecked.
+- [x] Check the standard project detail and gallery modal at a narrow mobile viewport.
+- [x] Check the logofolio detail layout on desktop and at 390px mobile width; confirm no horizontal overflow.
+- [x] Cycle through light, dark, and system themes and verify keyboard focus visibility.
+- [x] Confirm the reduced-motion stylesheet disables smooth scrolling and reduces animation/transition duration.
+- [ ] Enable the reduced-motion preference and visually verify the page behavior in a browser.
+- [x] Confirm the public entries API returns published portfolio items (two entries were returned).
+- [ ] Confirm drafts stay private from public pages and APIs.
+- [x] Confirm signed-out `/admin` redirects (307) and anonymous category, entry, and profile APIs return 401.
+- [x] Verify tool search and selection in the authenticated CMS; discard the unsaved test selection without saving.
+- [x] Confirm the CMS entry editor exposes presentation, gallery, tool, year, completion-date, and publication fields.
+- [ ] Update `docs/PLAN.md` with remaining manual results.
+
+Browser checks were completed against `http://localhost:3000`. No CMS content was saved or changed.
 
 ## 5. Prepare deployment when project details are ready
 
 - [ ] Choose the Git repository, production branch, domain, Preview database, and backup/restore plan.
 - [ ] Follow `docs/DEPLOYMENT_VERCEL.md` to configure separate Preview and Production variables, Supabase redirect URLs, and a Preview deployment.
-- [ ] Complete the production checks and restore drill before launch. Do not use production data for destructive verification.
+- [ ] Complete production checks and a restore drill before launch. Do not use production data for destructive verification.

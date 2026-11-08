@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 export function SiteHeader({ displayName = 'Your Name' }: { displayName?: string }) {
@@ -68,9 +69,7 @@ export function SiteHeader({ displayName = 'Your Name' }: { displayName?: string
       onFocusCapture={() => setHidden(false)}
     >
       <Link aria-label={`${displayName} portfolio home`} className="wordmark" href="/" onClick={closeMenu}>
-        <span aria-hidden="true" className="wordmark__mark">
-          {displayName.trim().charAt(0).toUpperCase() || 'Y'}
-        </span>
+        <Image alt="" className="wordmark__mark" height={36} priority src="/images/SVG/portfolio-logo.svg" width={36} />
         <span>{displayName}</span>
       </Link>
 

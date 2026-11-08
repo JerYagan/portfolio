@@ -7,7 +7,8 @@ import { TechnologyMark } from '@/components/public/TechnologyMark';
 import { TECHNOLOGY_OPTIONS, technologyIdForLabel, technologyOption, type TechnologyId } from '@/lib/tech-stack';
 
 type Category = { id: string; name: string };
-type MediaItem = { id?: string; object_path: string; alt_text: string; caption: string | null; sort_order: number; preview_url: string | null };
+type MediaRole = 'presentation_board' | 'logo_variation' | 'supporting_image';
+type MediaItem = { id?: string; object_path: string; alt_text: string; caption: string | null; media_role: MediaRole; sort_order: number; preview_url: string | null };
 type Entry = {
   id: string; category_id: string; title: string; slug: string; summary: string; presentation: 'standard' | 'logofolio'; body_markdown: string;
   thumbnail_path: string | null; thumbnail_alt: string | null; thumbnail_preview_url: string | null;
@@ -17,7 +18,7 @@ type Entry = {
   media: MediaItem[];
 };
 type Envelope<T> = { data?: T; error?: { message?: string; fields?: Record<string, string> }; meta?: { cleanup_pending?: string[] } };
-type NewMedia = { key: string; file: File; alt_text: string; caption: string; preview_url: string };
+type NewMedia = { key: string; file: File; alt_text: string; caption: string; media_role: MediaRole; preview_url: string };
 
 const blankEntry: Omit<Entry, 'id'> = {
   category_id: '', title: '', slug: '', summary: '', presentation: 'standard', body_markdown: '', thumbnail_path: null, thumbnail_alt: null,
@@ -52,18 +53,40 @@ export function EntryEditor({ categories, initialEntry }: { categories: Category
 
   function moveExistingMedia(index: number, direction: -1 | 1) {
     const next = [...entry.media];
-    const target = index + direction;
-    if (target < 0 || target >= next.length) return;
+    const matchingIndexes = next.flatMap((item, itemIndex) => item.media_role === next[index]?.media_role ? [itemIndex] : []);
+    const position = matchingIndexes.indexOf(index);
+    const target = matchingIndexes[position + direction];
+    if (target === undefined) return;
     [next[index], next[target]] = [next[target], next[index]];
     setField('media', next.map((item, order) => ({ ...item, sort_order: order })));
   }
 
   function moveNewMedia(index: number, direction: -1 | 1) {
     const next = [...newGallery];
-    const target = index + direction;
-    if (target < 0 || target >= next.length) return;
+    const matchingIndexes = next.flatMap((item, itemIndex) => item.media_role === next[index]?.media_role ? [itemIndex] : []);
+    const position = matchingIndexes.indexOf(index);
+    const target = matchingIndexes[position + direction];
+    if (target === undefined) return;
     [next[index], next[target]] = [next[target], next[index]];
     setNewGallery(next);
+  }
+
+  function changeExistingMediaRole(index: number, media_role: MediaRole) {
+    const fallbackRole = entry.presentation === 'logofolio' ? 'logo_variation' : 'supporting_image';
+    setField('media', entry.media.map((media, mediaIndex) => ({
+      ...media,
+      media_role: mediaIndex === index ? media_role : media_role === 'presentation_board' && media.media_role === 'presentation_board' ? fallbackRole : media.media_role,
+    })));
+    if (media_role === 'presentation_board') setNewGallery((current) => current.map((media) => media.media_role === 'presentation_board' ? { ...media, media_role: fallbackRole } : media));
+  }
+
+  function changeNewMediaRole(key: string, media_role: MediaRole) {
+    const fallbackRole = entry.presentation === 'logofolio' ? 'logo_variation' : 'supporting_image';
+    setNewGallery((current) => current.map((media) => ({
+      ...media,
+      media_role: media.key === key ? media_role : media_role === 'presentation_board' && media.media_role === 'presentation_board' ? fallbackRole : media.media_role,
+    })));
+    if (media_role === 'presentation_board') setField('media', entry.media.map((media) => media.media_role === 'presentation_board' ? { ...media, media_role: fallbackRole } : media));
   }
 
   function thumbnailChanged(event: ChangeEvent<HTMLInputElement>) {
@@ -74,7 +97,7 @@ export function EntryEditor({ categories, initialEntry }: { categories: Category
 
   function galleryChanged(event: ChangeEvent<HTMLInputElement>) {
     const files = [...(event.target.files ?? [])];
-    const mapped = files.map((file) => ({ key: crypto.randomUUID(), file, alt_text: '', caption: '', preview_url: URL.createObjectURL(file) }));
+    const mapped = files.map((file) => ({ key: crypto.randomUUID(), file, alt_text: '', caption: '', media_role: 'supporting_image' as MediaRole, preview_url: URL.createObjectURL(file) }));
     setNewGallery((current) => [...current, ...mapped]);
     event.target.value = '';
   }
@@ -117,7 +140,7 @@ export function EntryEditor({ categories, initialEntry }: { categories: Category
       for (const item of newGallery) {
         const result = await upload(item.file);
         uploaded.push(result.object_path);
-        gallery.push({ object_path: result.object_path, alt_text: item.alt_text.trim(), caption: item.caption.trim() || null, sort_order: gallery.length, preview_url: result.preview_url });
+        gallery.push({ object_path: result.object_path, alt_text: item.alt_text.trim(), caption: item.caption.trim() || null, media_role: item.media_role, sort_order: gallery.length, preview_url: result.preview_url });
       }
 
       const payload = {
@@ -129,7 +152,7 @@ export function EntryEditor({ categories, initialEntry }: { categories: Category
         status: entry.status, is_featured: entry.is_featured, sort_order: Number(entry.sort_order),
         seo_title: entry.seo_title || null, seo_description: entry.seo_description || null,
         tag_names: entry.tags.map((tag) => tag.name),
-        media: gallery.map(({ object_path, alt_text, caption }, sort_order) => ({ object_path, alt_text, caption, sort_order })),
+        media: gallery.map(({ object_path, alt_text, caption, media_role }, sort_order) => ({ object_path, alt_text, caption, media_role, sort_order })),
       };
       const response = await fetch(isEditing ? `/api/admin/entries/${initialEntry!.id}` : '/api/admin/entries', {
         method: isEditing ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
@@ -168,18 +191,24 @@ export function EntryEditor({ categories, initialEntry }: { categories: Category
 
   return (
     <form className="admin-form admin-entry-form" onSubmit={submit}>
-      <div className="admin-editor-topline"><p className="admin-eyebrow">{isEditing ? 'Edit portfolio entry' : 'Create a portfolio entry'}</p><Link href="/admin/entries">← Back to entries</Link></div>
+      <div className="admin-editor-topline">
+        <p className="admin-eyebrow">{isEditing ? 'Edit portfolio entry' : 'Create a portfolio entry'}</p>
+        <div className="admin-editor-topline__actions">
+          {initialEntry ? <Link href={`/preview/${initialEntry.id}`} rel="noreferrer" target="_blank">Preview saved version ↗</Link> : null}
+          <Link href="/admin/entries">← Back to entries</Link>
+        </div>
+      </div>
       <div className="admin-editor-grid">
         <div className="admin-editor-main">
           <label>Project presentation<select onChange={(event) => setField('presentation', event.target.value as Entry['presentation'])} value={entry.presentation ?? 'standard'}><option value="standard">Standard project</option><option value="logofolio">Logofolio</option></select></label>
-          {entry.presentation === 'logofolio' ? <p className="admin-field-note">For this layout, make the first gallery image your tall brand presentation board. Later images become the logo gallery; selected tools appear below the board.</p> : null}
+          {entry.presentation === 'logofolio' ? <p className="admin-field-note">Choose each image role below. The presentation board is displayed full-width, followed by tools and the logo/supporting gallery.</p> : null}
           <label>Title<input maxLength={120} onChange={(event) => { const title = event.target.value; setField('title', title); if (!entry.slug) setField('slug', slugify(title)); }} required value={entry.title} /></label>
           <label>URL slug<div className="admin-input-with-button"><input maxLength={100} onChange={(event) => setField('slug', event.target.value)} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required value={entry.slug} /><button className="admin-text-button" onClick={() => setField('slug', slugify(entry.title))} type="button">From title</button></div></label>
           <label>Short description<textarea maxLength={240} onChange={(event) => setField('summary', event.target.value)} required rows={3} value={entry.summary} /></label>
           <label>Full details <span className="admin-field-note">Markdown is supported; HTML is displayed as text.</span><textarea className="admin-markdown-input" maxLength={30000} onChange={(event) => setField('body_markdown', event.target.value)} rows={15} value={entry.body_markdown} /></label>
           <section className="admin-subsection"><h2>Gallery</h2>
-            {entry.media.map((item, index) => <div className="admin-media-edit-row" key={item.id ?? item.object_path}>{item.preview_url ? <img alt="" src={item.preview_url} /> : <div className="admin-image-missing">Preview unavailable</div>}<div><label>Alternative text<input maxLength={300} onChange={(event) => setField('media', entry.media.map((media, mediaIndex) => mediaIndex === index ? { ...media, alt_text: event.target.value } : media))} required value={item.alt_text} /></label><label>Caption<input maxLength={300} onChange={(event) => setField('media', entry.media.map((media, mediaIndex) => mediaIndex === index ? { ...media, caption: event.target.value || null } : media))} value={item.caption ?? ''} /></label></div><div className="admin-gallery-actions"><button aria-label={`Move gallery image ${index + 1} up`} className="admin-text-button" disabled={index === 0} onClick={() => moveExistingMedia(index, -1)} type="button">↑ Up</button><button aria-label={`Move gallery image ${index + 1} down`} className="admin-text-button" disabled={index === entry.media.length - 1} onClick={() => moveExistingMedia(index, 1)} type="button">↓ Down</button><button className="admin-text-button admin-text-button--danger" onClick={() => setField('media', entry.media.filter((_, mediaIndex) => mediaIndex !== index))} type="button">Remove</button></div></div>)}
-            {newGallery.map((item, index) => <div className="admin-media-edit-row" key={item.key}><img alt="" src={item.preview_url} /><div><p className="admin-file-name">{item.file.name}</p><label>Alternative text<input maxLength={300} onChange={(event) => setNewGallery((current) => current.map((media) => media.key === item.key ? { ...media, alt_text: event.target.value } : media))} required value={item.alt_text} /></label><label>Caption<input maxLength={300} onChange={(event) => setNewGallery((current) => current.map((media) => media.key === item.key ? { ...media, caption: event.target.value } : media))} value={item.caption} /></label></div><div className="admin-gallery-actions"><button aria-label={`Move new gallery image ${index + 1} up`} className="admin-text-button" disabled={index === 0} onClick={() => moveNewMedia(index, -1)} type="button">↑ Up</button><button aria-label={`Move new gallery image ${index + 1} down`} className="admin-text-button" disabled={index === newGallery.length - 1} onClick={() => moveNewMedia(index, 1)} type="button">↓ Down</button><button className="admin-text-button admin-text-button--danger" onClick={() => setNewGallery((current) => current.filter((media) => media.key !== item.key))} type="button">Remove</button></div></div>)}
+            {entry.media.map((item, index) => <div className="admin-media-edit-row" key={item.id ?? item.object_path}>{item.preview_url ? <img alt="" src={item.preview_url} /> : <div className="admin-image-missing">Preview unavailable</div>}<div><label>Image role<select onChange={(event) => changeExistingMediaRole(index, event.target.value as MediaRole)} value={item.media_role}><option value='presentation_board'>Presentation board</option><option value='logo_variation'>Logo variation</option><option value='supporting_image'>Supporting image</option></select></label><label>Alternative text<input maxLength={300} onChange={(event) => setField('media', entry.media.map((media, mediaIndex) => mediaIndex === index ? { ...media, alt_text: event.target.value } : media))} required value={item.alt_text} /></label><label>Caption<input maxLength={300} onChange={(event) => setField('media', entry.media.map((media, mediaIndex) => mediaIndex === index ? { ...media, caption: event.target.value || null } : media))} value={item.caption ?? ''} /></label></div><div className="admin-gallery-actions"><button aria-label={`Move gallery image ${index + 1} up`} className="admin-text-button" disabled={!entry.media.slice(0, index).some((media) => media.media_role === item.media_role)} onClick={() => moveExistingMedia(index, -1)} type="button">↑ Up</button><button aria-label={`Move gallery image ${index + 1} down`} className="admin-text-button" disabled={!entry.media.slice(index + 1).some((media) => media.media_role === item.media_role)} onClick={() => moveExistingMedia(index, 1)} type="button">↓ Down</button><button className="admin-text-button admin-text-button--danger" onClick={() => setField('media', entry.media.filter((_, mediaIndex) => mediaIndex !== index))} type="button">Remove</button></div></div>)}
+            {newGallery.map((item, index) => <div className="admin-media-edit-row" key={item.key}><img alt="" src={item.preview_url} /><div><p className="admin-file-name">{item.file.name}</p><label>Image role<select onChange={(event) => changeNewMediaRole(item.key, event.target.value as MediaRole)} value={item.media_role}><option value='presentation_board'>Presentation board</option><option value='logo_variation'>Logo variation</option><option value='supporting_image'>Supporting image</option></select></label><label>Alternative text<input maxLength={300} onChange={(event) => setNewGallery((current) => current.map((media) => media.key === item.key ? { ...media, alt_text: event.target.value } : media))} required value={item.alt_text} /></label><label>Caption<input maxLength={300} onChange={(event) => setNewGallery((current) => current.map((media) => media.key === item.key ? { ...media, caption: event.target.value } : media))} value={item.caption} /></label></div><div className="admin-gallery-actions"><button aria-label={`Move new gallery image ${index + 1} up`} className="admin-text-button" disabled={!newGallery.slice(0, index).some((media) => media.media_role === item.media_role)} onClick={() => moveNewMedia(index, -1)} type="button">↑ Up</button><button aria-label={`Move new gallery image ${index + 1} down`} className="admin-text-button" disabled={!newGallery.slice(index + 1).some((media) => media.media_role === item.media_role)} onClick={() => moveNewMedia(index, 1)} type="button">↓ Down</button><button className="admin-text-button admin-text-button--danger" onClick={() => setNewGallery((current) => current.filter((media) => media.key !== item.key))} type="button">Remove</button></div></div>)}
             <label className="admin-file-picker">{entry.presentation === 'logofolio' ? 'Add presentation / logo images' : 'Add gallery images'}<input accept="image/jpeg,image/png,image/webp,image/avif" multiple onChange={galleryChanged} type="file" /></label>
             <p className="admin-field-note">JPEG, PNG, WebP, or AVIF. Each image can be up to 8 MiB.</p>
           </section>

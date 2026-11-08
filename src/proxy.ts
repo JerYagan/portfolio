@@ -6,10 +6,11 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/');
   const isAdminLogin = pathname === '/admin/login';
+  const isPrivatePreview = pathname === '/preview' || pathname.startsWith('/preview/');
 
   if (!isSupabaseConfigured || !env.supabaseUrl || !env.supabasePublishableKey) {
     if (isAdminPage && !isAdminLogin) return NextResponse.redirect(new URL('/admin/login?error=configuration', request.url));
-    return NextResponse.next({ request });
+    return addPrivatePreviewHeaders(NextResponse.next({ request }), isPrivatePreview);
   }
 
   let response = NextResponse.next({ request });
@@ -33,14 +34,23 @@ export async function proxy(request: NextRequest) {
   });
 
   const { data } = await supabase.auth.getClaims();
-  if (isAdminPage && !isAdminLogin && !data?.claims?.sub) {
+  const requiresSignedInSession = (isAdminPage && !isAdminLogin) || isPrivatePreview;
+  if (requiresSignedInSession && !data?.claims?.sub) {
     const loginUrl = new URL('/admin/login', request.url);
     loginUrl.searchParams.set('next', pathname);
     const redirectResponse = NextResponse.redirect(loginUrl);
     response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
-    return redirectResponse;
+    return addPrivatePreviewHeaders(redirectResponse, isPrivatePreview);
   }
 
+  return addPrivatePreviewHeaders(response, isPrivatePreview);
+}
+
+function addPrivatePreviewHeaders(response: NextResponse, enabled: boolean) {
+  if (enabled) {
+    response.headers.set('Cache-Control', 'private, no-store, max-age=0, must-revalidate');
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+  }
   return response;
 }
 

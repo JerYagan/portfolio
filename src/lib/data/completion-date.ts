@@ -13,3 +13,11 @@ export function isMissingPresentationColumn(error: unknown): boolean {
   return (details.code === '42703' && /presentation/i.test(message))
     || (details.code === 'PGRST204' && message.includes('presentation'));
 }
+
+export function isMissingMediaRoleColumn(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const details = error as { code?: unknown; message?: unknown };
+  const message = typeof details.message === 'string' ? details.message : '';
+  return (details.code === '42703' && /media_role/i.test(message))
+    || (details.code === 'PGRST204' && message.includes('media_role'));
+}

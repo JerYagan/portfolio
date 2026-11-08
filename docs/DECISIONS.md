@@ -117,3 +117,15 @@ Short records of durable choices. Add newest decisions at the top.
 - **Reason:** The stack file is intended to prevent agents from guessing versions or silently changing technologies.
 - **Trade-off:** Re-check releases and compatibility when implementation begins; this document is a baseline, not automatic upgrades.
 
+## 2026-11-08 — Reuse the public renderer for private entry previews
+
+- **Decision:** Serve saved entry previews at `/preview/[id]` only after server-side session and admin-membership checks. Render them with the same `ProjectDetail` component as public entries and use the authenticated, RLS-backed Supabase client for data and five-minute signed media URLs.
+- **Reason:** The owner needs to review unpublished work exactly as it will appear without exposing draft reads through public pages or APIs.
+- **Trade-off:** Preview access requires the existing owner session, previews show the last saved state rather than unsaved form edits, and no shared token-based link is supported.
+
+## 2026-11-08 — Store explicit portfolio media roles
+
+- **Decision:** Store `presentation_board`, `logo_variation`, or `supporting_image` on each gallery row. Allow at most one presentation board per entry and order images within each role. Backfill existing logofolio entries from their prior first-image convention.
+- **Reason:** The lead board should not change when the owner reorders or adds gallery images; supporting imagery needs to coexist with logo marks without being treated as a logo variation.
+- **Trade-off:** Existing installations must apply the additive media-role migration before saving gallery edits; public/editor reads retain a legacy fallback until then.
+

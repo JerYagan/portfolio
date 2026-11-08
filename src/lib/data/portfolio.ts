@@ -2,7 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createPublicSupabaseClient } from '@/lib/supabase/public';
-import { isMissingCompletionDateColumn, isMissingPresentationColumn } from '@/lib/data/completion-date';
+import { isMissingCompletionDateColumn, isMissingPresentationColumn, isMissingMediaRoleColumn } from '@/lib/data/completion-date';
 import { normalizeStoredTechnologies, technologyOption, type TechnologyId, type TechnologyStatus } from '@/lib/tech-stack';
 
 const mediaBucket = 'portfolio-media';
@@ -57,6 +57,7 @@ type MediaRow = {
   alt_text: string;
   caption: string | null;
   sort_order: number;
+  media_role?: PortfolioMediaRole;
 };
 
 type TagRow = {
@@ -73,7 +74,8 @@ export type PublicCategory = Pick<CategoryRow, 'id' | 'name' | 'slug' | 'descrip
 export type PublicCategoryWithCount = PublicCategory & { entry_count: number };
 export type PublicImage = { url: string; alt: string };
 export type PublicTag = TagRow;
-export type PublicGalleryImage = PublicImage & { caption: string | null; sort_order: number };
+export type PortfolioMediaRole = 'presentation_board' | 'logo_variation' | 'supporting_image';
+export type PublicGalleryImage = PublicImage & { caption: string | null; sort_order: number; media_role: PortfolioMediaRole };
 
 export type PublicProfile = {
   displayName: string;
@@ -407,18 +409,29 @@ export async function getPublishedEntryBySlug(slug: string): Promise<PublicEntry
     signImage(client, row.thumbnail_path, row.thumbnail_alt),
     client
       .from('portfolio_media')
-      .select('object_path,alt_text,caption,sort_order')
+      .select('object_path,alt_text,caption,sort_order,media_role')
       .eq('entry_id', row.id)
       .order('sort_order', { ascending: true }),
     client.from('entry_tags').select('portfolio_tags(id,name,slug)').eq('entry_id', row.id),
   ]);
-  ensureNoError(mediaResult.error);
   ensureNoError(tagsResult.error);
 
-  const mediaRows = (mediaResult.data ?? []) as unknown as MediaRow[];
+  let mediaRows: MediaRow[];
+  if (isMissingMediaRoleColumn(mediaResult.error)) {
+    const legacyMedia = await client.from('portfolio_media').select('object_path,alt_text,caption,sort_order')
+      .eq('entry_id', row.id).order('sort_order', { ascending: true });
+    ensureNoError(legacyMedia.error);
+    mediaRows = (legacyMedia.data ?? []).map((image, index) => ({
+      ...image,
+      media_role: row.presentation === 'logofolio' ? (index === 0 ? 'presentation_board' : 'logo_variation') : 'supporting_image',
+    })) as MediaRow[];
+  } else {
+    ensureNoError(mediaResult.error);
+    mediaRows = (mediaResult.data ?? []) as unknown as MediaRow[];
+  }
   const media = await Promise.all(mediaRows.map(async (image) => {
     const signedImage = await signImage(client, image.object_path, image.alt_text);
-    return signedImage ? { ...signedImage, caption: image.caption, sort_order: image.sort_order } : null;
+    return signedImage ? { ...signedImage, caption: image.caption, sort_order: image.sort_order, media_role: image.media_role ?? 'supporting_image' } : null;
   }));
   const tagRows = (tagsResult.data ?? []) as unknown as EntryTagRow[];
   const tags = tagRows.flatMap((row) => {

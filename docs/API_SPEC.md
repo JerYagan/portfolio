@@ -2,6 +2,8 @@
 
 All handlers are Next.js App Router Route Handlers under `src/app/api`. JSON is UTF-8. The browser must not receive database internals, drafts, secrets, or stack traces. Admin endpoints require a valid Supabase session and membership in `admin_users`; every write also relies on RLS.
 
+The private HTML page `/preview/[id]` is not a JSON endpoint. It validates a UUID, requires a valid session and `admin_users` membership, and renders the saved entry through the same detail component as public work. Signed-out requests redirect to `/admin/login` with a validated return path; unknown entries return the standard 404 page. Responses are dynamic, `private, no-store`, and `noindex`/`nofollow`/`noarchive`. It does not alter the public entry API contract or publish drafts.
+
 ## Common response shapes
 
 Success:
@@ -64,9 +66,10 @@ All admin routes return `401 UNAUTHENTICATED` when signed out and `403 FORBIDDEN
 ### Entries
 
 - `GET /api/admin/entries?status=draft|published|all&page=1&limit=20&q=` — paginated owner list, newest-updated first. `limit` is 1–100; `q` searches title and summary.
-- `POST /api/admin/entries` — create draft or published entry. Required: `title`, `slug`, `summary`, `category_id`; optional remaining `portfolio_entries` fields including `presentation` (`standard|logofolio`, defaults to `standard`), `completed_on` (`YYYY-MM-DD` or null), `tag_names[]` or `tag_ids[]`, and `media[]` (`object_path`, `alt_text`, `caption`, `sort_order`). Tag names are resolved to reusable tags.
+- `POST /api/admin/entries` — create draft or published entry. Required: `title`, `slug`, `summary`, `category_id`; optional remaining `portfolio_entries` fields including `presentation` (`standard|logofolio`, defaults to `standard`), `completed_on` (`YYYY-MM-DD` or null), `tag_names[]` or `tag_ids[]`, and `media[]` (`object_path`, `alt_text`, `caption`, `media_role`, `sort_order`). `media_role` is `presentation_board|logo_variation|supporting_image`, defaults to `supporting_image`, and at most one media item may be the presentation board. Tag names are resolved to reusable tags.
 - `GET /api/admin/entries/[id]` — fetch full editable entry, category, tags, ordered gallery, and five-minute signed preview URLs.
-- `PATCH /api/admin/entries/[id]` — partial update. Unknown fields are rejected. `presentation` accepts `standard|logofolio`; `completed_on` accepts a valid `YYYY-MM-DD` calendar date or null. Category, tags, and gallery are validated; `tag_names[]` may contain canonical names from the code-owned technology catalog (shown as project tools with local logos) or free-form project labels. The handler compensates by restoring entry associations if a multi-step association write fails. Unreferenced old-image cleanup failures are included in `meta.cleanup_pending[]` for retry.
+- The CMS editor links to `/preview/[id]` in a new tab for an existing saved entry. The preview displays the last saved state, including drafts; unsaved form changes are not included.
+- `PATCH /api/admin/entries/[id]` — partial update. Unknown fields are rejected. `presentation` accepts `standard|logofolio`; `completed_on` accepts a valid `YYYY-MM-DD` calendar date or null. Category, tags, and gallery are validated; each media item accepts `media_role` from `presentation_board|logo_variation|supporting_image`, with at most one board per entry. `tag_names[]` may contain canonical names from the code-owned technology catalog (shown as project tools with local logos) or free-form project labels. The handler compensates by restoring entry associations if a multi-step association write fails. Unreferenced old-image cleanup failures are included in `meta.cleanup_pending[]` for retry.
 - `DELETE /api/admin/entries/[id]` — permanently delete entry and relation rows, then remove unreferenced Storage objects. If cleanup fails, returns `200` with `meta.cleanup_pending[]` so the client can retry; successful cleanup returns `204`.
 
 Successful create returns `201`; update `200`; delete `204`. Slug collision returns `409 SLUG_TAKEN`. Invalid category, body, or tag references return `400 VALIDATION_ERROR`.
@@ -74,6 +77,8 @@ Successful create returns `201`; update `200`; delete `204`. Slug collision retu
 When the optional `completed_on` column is missing on an older schema, public reads temporarily fall back to `year`; attempts to set a non-null completion date return `503 MIGRATION_REQUIRED` until the additive migration is applied.
 
 When `presentation` is missing on an older schema, public reads and standard CMS entries default to `standard`; attempts to save `logofolio` return `503 MIGRATION_REQUIRED` until `20261108020000_entry_presentation_layout.sql` is applied.
+
+When `portfolio_media.media_role` is missing, public pages and editor reads fall back to the prior first-image logofolio convention. Admin saves that include gallery images return `503 MIGRATION_REQUIRED` until `20261108030000_portfolio_media_roles.sql` is applied.
 
 ### Categories
 

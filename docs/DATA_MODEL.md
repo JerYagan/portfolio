@@ -91,12 +91,13 @@ Category names are data, not an enum. Entries reference category IDs. A category
 | `object_path` | `text` | Not null, unique Storage path under `portfolio/`, max 512 characters |
 | `alt_text` | `text` | Not null, trimmed length 1–300 characters |
 | `caption` | `text` | Nullable, max 300 characters |
+| `media_role` | `text` | Not null, defaults to `supporting_image`; one of `presentation_board`, `logo_variation`, `supporting_image` |
 | `sort_order` | `integer` | Not null, default `0` |
 | `created_at` | `timestamptz` | Not null, default `now()` |
 
 Images only in v1. The thumbnail may also appear in the gallery, but the gallery ordering is stored independently. Use object paths, not public URLs, so the URL can be derived from configured storage.
 
-For `logofolio` presentation, the first ordered media item is the tall brand presentation image; later ordered media items form the logo gallery. The entry thumbnail remains the archive-card preview. This convention avoids category-specific columns and media records remain reusable.
+For `logofolio` presentation, exactly zero or one `presentation_board` media item is rendered full-width before the tools section. `logo_variation` items render in the logo gallery and `supporting_image` items render in a separate supporting gallery; each gallery preserves image ratios and role-local `sort_order`. A partial unique index allows at most one presentation board per entry. The entry thumbnail remains the archive-card preview. The additive migration backfills existing logofolios by marking their first ordered image as the board and later images as logo variations, preserving the current appearance.
 
 ### `portfolio_tags`
 
@@ -114,7 +115,7 @@ Composite primary key (`entry_id`, `tag_id`). Both are foreign keys with cascade
 
 - Unique indexes on category slug, entry slug, media object path, and tag slug/name (case-insensitive name index).
 - Index entries by `(status, is_featured desc, sort_order, published_at desc)`, `(category_id, status, sort_order)`, and non-null `thumbnail_path`.
-- Index media by `(entry_id, sort_order)` and entry_tags by `tag_id`.
+- Index media by `(entry_id, sort_order)` and entry_tags by `tag_id`; a partial unique index on `portfolio_media(entry_id)` where `media_role = 'presentation_board'` permits at most one board per entry.
 - `updated_at` is updated by a database trigger for `profile`, `portfolio_categories`, and `portfolio_entries`.
 - Entry slug and category slug are normalized and validated in the application and constrained unique in SQL.
 - `completed_on` uses PostgreSQL `date`, with strict `YYYY-MM-DD` calendar validation at the API boundary.

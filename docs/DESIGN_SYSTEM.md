@@ -54,13 +54,14 @@ Always verify text contrast for actual pairings; do not assume an accent works f
 
 ## Core components
 
+- **Brand mark**: use the supplied `/images/SVG/portfolio-logo.svg` in public and admin wordmarks. Browser, Apple, and installed-app icons use the matching files in `/images/favicon_io/`.
 - **Site header**: sticky owner wordmark/name, desktop links, accessible theme selector, and a mobile menu. Hide the header as the visitor scrolls down and reveal it on upward scrolling; always reveal it when focused.
 - **Project card**: thumbnail, category label, title, concise summary, completion month/year when available or optional year as a fallback; whole-card link with a visible focus state.
 - **Profile landing**: portrait or calm placeholder, owner-written introduction, contact/social paths, technology marks grouped by tools in use and tools being learned, featured work, and up to eight latest published entries.
 - **Category filter**: clear selected state and a usable mobile layout.
 - **Project detail header**: category, title, summary, completion date/year and other optional metadata; external link shown only when supplied.
 - **Project tools**: distinguish selected catalog tools from free-form project tags. Show selected tools in the detail sidebar with their local brand-color marks and readable names; omit either group when empty.
-- **Logofolio detail**: use the entry's presentation setting, not category-name matching. Show the tall first media image at its natural ratio, followed by selected tools and a full-ratio masonry gallery of the remaining logo assets.
+- **Logofolio detail**: use the entry's presentation setting and explicit media roles, not category-name matching or first-image order. Show the optional presentation board at full content width, then selected tools, then separate full-ratio masonry galleries for logo variations and supporting images.
 - **Gallery**: a staggered, responsive masonry layout that preserves full image content and intrinsic aspect ratios. Each image opens alone in an accessible modal with a plain close icon; clicking outside the image or pressing Escape closes it. The page behind the modal is darkened and blurred.
 - **Admin shell**: persistent side navigation on desktop, compact menu on mobile, clear page title and action placement.
 - **Form controls**: labels, hint/error text, required indicators, pending/success/error states.
@@ -76,6 +77,7 @@ Always verify text contrast for actual pairings; do not assume an accent works f
 - Destructive actions use a named confirmation and become unavailable while a category still has entries.
 - Gallery images expose move-up and move-down buttons with explicit accessible names. Image alternative text is required before saving.
 - Pending upload and cleanup states remain visible until the owner resolves them.
+- Existing saved entries expose a **Preview saved version** link in the editor. The preview page reuses the public project layout and adds a restrained paper-surface notice with a return-to-editor link; at mobile widths the notice stacks vertically.
 
 ## Theme behavior
 

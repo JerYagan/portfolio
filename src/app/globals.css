@@ -174,15 +174,10 @@ a:focus-visible {
 }
 
 .wordmark__mark {
-  display: grid;
   width: 33px;
   height: 33px;
-  place-items: center;
-  border: 1px solid var(--color-text);
-  border-radius: 50%;
-  font-family: var(--font-serif);
-  font-size: 19px;
-  font-weight: 400;
+  flex: 0 0 33px;
+  object-fit: contain;
 }
 
 .site-nav {
@@ -1265,6 +1260,21 @@ a:focus-visible {
   overflow-x: clip;
 }
 
+.project-preview-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+  border: 1px solid var(--color-line);
+  padding: 12px 16px;
+  background: var(--color-surface);
+}
+
+.project-preview-notice .eyebrow { margin: 0 0 2px; }
+.project-preview-notice p:last-child { margin: 0; color: var(--color-muted); font-size: 12px; }
+.project-preview-notice > a { flex: 0 0 auto; font-size: 12px; }
+
 .back-link {
   font-size: 12px;
 }
@@ -1460,8 +1470,8 @@ a:focus-visible {
   padding-top: 40px;
 }
 
-.logofolio-detail { display: grid; gap: clamp(36px, 7vw, 88px); }
-.logofolio-board { width: min(100%, 920px); margin: 0 auto; }
+.logofolio-detail { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: clamp(36px, 7vw, 88px); }
+.logofolio-board { width: 100%; min-width: 0; margin: 0 auto; }
 .logofolio-board img { display: block; width: 100%; height: auto; object-fit: contain; }
 .logofolio-board figcaption { margin-top: 10px; color: var(--color-muted); font-size: 12px; text-align: center; }
 .logofolio-description { width: min(100%, 720px); margin-inline: auto; }
@@ -1587,6 +1597,11 @@ a:focus-visible {
   padding-top: 22px;
 }
 
+.detail-end--logofolio {
+  border-top: 0;
+  padding-top: 0;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -1625,6 +1640,8 @@ a:focus-visible {
   .detail-page {
     padding-block: 30px 70px;
   }
+
+  .project-preview-notice { align-items: flex-start; flex-direction: column; gap: 8px; }
 
   .page-intro {
     margin-bottom: 32px;
@@ -1793,13 +1810,13 @@ a:focus-visible {
 
 @media (max-width: 620px) {
   .profile-page { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-block: 56px 66px; }
-  .profile-page__portrait { width: min(64%, 260px); }
+  .profile-page__portrait { width: min(64%, 260px); margin-inline: auto; }
   .profile-page__copy h1 { font-size: clamp(50px, 15vw, 76px); }
   .profile-page__toolkit { grid-column: auto; }
   .home-featured { padding-block: 54px 64px; }
-  .home-featured .section-heading { align-items: flex-end; }
+  .home-featured .section-heading,
+  .home-latest .section-heading { align-items: flex-start; }
   .home-latest { padding-block: 52px 62px; }
-  .home-latest .section-heading { align-items: flex-end; }
   .home-category-section { grid-template-columns: 1fr; gap: 22px; padding-block: 46px 58px; }
   .home-category-section ul { grid-template-columns: 1fr; }
   .admin-tech-option { grid-template-columns: minmax(0, 1fr) minmax(120px, 0.7fr); }
@@ -1916,7 +1933,7 @@ a:focus-visible {
   text-decoration: none;
 }
 
-.admin-brand__mark { color: var(--color-accent); font-size: 21px; }
+.admin-brand__mark { width: 30px; height: 30px; flex: 0 0 30px; object-fit: contain; }
 .admin-topbar__account { gap: 18px; color: var(--color-muted); font-size: 11px; }
 .admin-signout,
 .admin-text-button { border: 0; padding: 4px 0; background: transparent; color: var(--color-text); cursor: pointer; font-size: 11px; text-decoration: underline; text-underline-offset: 3px; }
@@ -2001,6 +2018,7 @@ a:focus-visible {
 .status-pill--published { border-color: color-mix(in srgb, #557a5e 45%, var(--color-line)); color: #557a5e; }
 .admin-editor-topline { justify-content: space-between; border-bottom: 1px solid var(--color-line); padding-bottom: 16px; }
 .admin-editor-topline a { font-size: 11px; }
+.admin-editor-topline__actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 18px; }
 .admin-editor-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(270px, 0.7fr); gap: 32px; }
 .admin-editor-main,
 .admin-editor-aside { display: grid; align-content: start; gap: 19px; min-width: 0; }

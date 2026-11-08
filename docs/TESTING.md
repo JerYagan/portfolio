@@ -41,6 +41,7 @@ Before production, exercise:
 7. Keyboard-only navigation, visible focus, mobile viewport, reduced-motion preference, mobile menu open/close behavior, and header scroll-direction behavior at mobile and desktop widths.
 8. Profile editor technology search, grouped selection/status changes across disciplines, technology mark rendering, featured and latest work on the profile landing page, and date formatting for projects with a completion date.
 9. Confirm a schema without `completed_on` still renders public work using its existing year field; setting a completion date should explain that the additive migration is required.
+10. Open an existing saved draft from the CMS preview link; verify the public detail layout, noindex/no-store headers, five-minute media URLs, and successful return-to-editor navigation. Open the same preview signed out and as a non-admin; verify no entry data is returned and public pages/APIs remain published-only.
 
 ## Commands
 
@@ -83,4 +84,23 @@ Report the exact commands run and their outcomes. Distinguish unit, database/RLS
 - Browser review at 950px showed three masonry columns for the three project images. The preview dialog appeared contained, with a dark blurred backdrop and close button; Escape closed it and restored focus.
 - Browser review at 390px confirmed the cover stays within a short mobile frame and the public skill marks retain brand colors. Outside-image dismissal and admin field sizing were not visually checked; no database writes or unit tests were run.
 - No database writes or content changes were made.
+
+## 2026-11-08 private saved-entry preview
+
+- Pinned-runtime typecheck passed: `npm exec --yes --package=node@24.22.2 -- node node_modules/typescript/bin/tsc --noEmit`.
+- Pinned-runtime production build passed: `npm exec --yes --package=node@24.22.2 -- node node_modules/next/dist/bin/next build`. The build includes the dynamic `/preview/[id]` route.
+- Browser review confirmed a signed-out preview request redirects to the login page with the exact UUID preview path, and an authenticated owner can render the saved project through the shared public detail layout.
+- CMS review confirmed **Preview saved version** opens `/preview/[id]` in a new tab with `rel="noreferrer"`. The route showed the private preview notice and editor return link. No editor form was saved.
+- Anonymous HTTP verification returned `307` before content rendering with `Cache-Control: private, no-store, max-age=0, must-revalidate` and `X-Robots-Tag: noindex, nofollow, noarchive`. The rendered preview document includes matching robots metadata.
+- No draft entry was available in the configured Production database, so a draft record was not created. Testing the preview with a saved draft and confirming draft exclusion against that record remain pending; no database or portfolio content was changed.
+- The local dev server was restarted after the production build and is available at `http://localhost:3000`.
+
+## 2026-11-08 media roles and branding
+
+- Pinned Node.js `24.22.2` typecheck passed: `npm exec --yes --package=node@24.22.2 -- node node_modules/typescript/bin/tsc --noEmit`.
+- Pinned Node.js `24.22.2` production build passed: `npm exec --yes --package=node@24.22.2 -- node node_modules/next/dist/bin/next build`.
+- `GET /` returned `200`; the server-rendered head referenced the 16×16 and 32×32 favicon PNGs, ICO, Apple touch icon, and manifest. The SVG logo, ICO, and manifest URLs each returned `200`.
+- Role selector and reorder controls were not checked in a browser; they need the migration applied to be fully exercised.
+- Migration `20261108030000_portfolio_media_roles.sql` was added to the repository but was not applied to the configured Supabase project. The existing first-image convention is used for reads until migration; gallery writes require the migration and return `503 MIGRATION_REQUIRED`.
+- No portfolio content or database rows were modified.
 

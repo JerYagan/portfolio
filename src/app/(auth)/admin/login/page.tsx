@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { LoginForm } from '@/components/admin/LoginForm';
 import { getAdminPageContext } from '@/lib/auth/authorization';
 import { isSupabaseConfigured } from '@/lib/env';
+import { uuidSchema } from '@/lib/validation/admin';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Admin sign in' };
@@ -14,7 +15,10 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: L
   const params = await searchParams;
   const nextValue = Array.isArray(params.next) ? params.next[0] : params.next;
   const errorValue = Array.isArray(params.error) ? params.error[0] : params.error;
-  const nextPath = nextValue?.startsWith('/admin/') && !nextValue.startsWith('//') && nextValue !== '/admin/login'
+  const previewId = nextValue?.startsWith('/preview/') ? nextValue.slice('/preview/'.length) : '';
+  const isSafeNextPath = (nextValue?.startsWith('/admin/') && !nextValue.startsWith('//') && nextValue !== '/admin/login')
+    || (Boolean(nextValue?.startsWith('/preview/')) && uuidSchema.safeParse(previewId).success);
+  const nextPath = isSafeNextPath && nextValue
     ? nextValue
     : '/admin';
   const currentAdmin = await getAdminPageContext();

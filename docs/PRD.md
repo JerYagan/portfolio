@@ -28,7 +28,7 @@ One invited Supabase Auth account, explicitly registered in the `admin_users` ta
 - **Home (`/`)**: a profile-first page with portrait, name, personal headline/biography, location, contact/social links, a curated stack, featured work, up to eight latest published works, and category links. Use an honest, conversational fallback when the owner has not filled in their own copy.
 - **Work index (`/work`)**: all published entries, category filters, and clear empty states. Cards show thumbnail, title, category, short description, and optional completion date (or year when no date is supplied).
 - **Category view (`/work/category/[slug]`)**: entries for one visible category; unknown/hidden categories return not found.
-- **Entry detail (`/work/[slug]`)**: standard entries show title, category, summary, cover image, long-form case-study content, optional Pinterest-style masonry gallery, completion date (or year), role, selected catalog tools with local brand-color logos, additional project tags, and external project link. Logofolio entries show category/title/summary/year, a full-width tall presentation board, selected tools, and a masonry gallery of logo variations. Both gallery layouts preserve each image's full aspect ratio and open an accessible image-only preview modal. Hide absent optional fields rather than showing empty labels.
+- **Entry detail (`/work/[slug]`)**: standard entries show title, category, summary, cover image, long-form case-study content, optional Pinterest-style masonry gallery, completion date (or year), role, selected catalog tools with local brand-color logos, additional project tags, and external project link. Logofolio entries show category/title/summary/year, a full-width presentation-board image independent of gallery order, selected tools, then separate masonry galleries for logo variations and supporting images. Both gallery layouts preserve each image's full aspect ratio and open an accessible image-only preview modal. Hide absent optional fields rather than showing empty labels.
 - **About (`/about`)**: full owner profile, current stacks/skills, and contact/social paths.
 - **Theme**: user can choose light, dark, or system preference. Persist an explicit choice locally; do not require an account.
 - **Not found**: a designed 404 page with a route back to the work index.
@@ -42,7 +42,8 @@ Initial empty categories may include **Websites**, **Graphic Design**, **Drawing
 - Login is invite-only; there is no public registration route.
 - Admin layout has navigation for overview, entries, categories, and profile/settings, with a sign-out action.
 - Overview shows counts and a short list of recently updated entries.
-- Entry editor supports title, slug, summary, standard/logofolio presentation, detail markdown, category, draft/published state, featured flag, sort order, year, completion date, role, client label, searchable catalog tool selection, additional free-form tags, project/repository links, thumbnail, alt text, and an ordered media gallery. For logofolios the first gallery image is the tall board; following images make up the logo gallery.
+- Entry editor supports title, slug, summary, standard/logofolio presentation, detail markdown, category, draft/published state, featured flag, sort order, year, completion date, role, client label, searchable catalog tool selection, additional free-form tags, project/repository links, thumbnail, alt text, and an ordered media gallery. Every gallery image has a selectable presentation-board, logo-variation, or supporting-image role. Only one board can be selected; drag ordering remains within each role.
+- For an existing saved entry, the owner can open a private preview in a new tab. It uses the public detail layout for both standard and logofolio entries and may render saved drafts only after server-side owner authorization.
 - Category editor supports name, slug, description, visibility, and sort order. It must support arbitrary future disciplines.
 - Profile editor supports display name, headline, biography, location, public email/contact URL, avatar, a searchable and grouped technology catalog with local logos and “I use this” / “I’m learning this” status, and social links. Start with HTML, CSS, and PHP marked as current; keep additional catalog choices available without showing them by default.
 - Media is uploaded to the configured Supabase Storage bucket. Enforce an explicit accepted image format and size limit in `SECURITY.md`.
@@ -73,6 +74,7 @@ Initial empty categories may include **Websites**, **Graphic Design**, **Drawing
 10. The home page reads as the owner's profile and can feature published entries selected in the CMS; projects can show an exact completion date.
 11. The profile editor can select technologies from a maintained catalog, classify each as in-use or learning, and display local technology marks on the public site.
 12. The profile landing page shows no more than eight latest published works; the detail gallery keeps image ratios intact and opens images in a modal dismissed by Escape or by clicking outside the image.
+13. The owner can preview a saved draft with the public detail layout while signed out visitors, non-admins, public APIs, and crawlers cannot access or index the draft.
 
 ## Out of scope for the first release
 

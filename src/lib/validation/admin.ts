@@ -48,6 +48,7 @@ const galleryItemSchema = z.object({
   object_path: objectPath,
   alt_text: z.string().trim().min(1).max(300),
   caption: z.string().max(300).nullable().optional(),
+  media_role: z.enum(['presentation_board', 'logo_variation', 'supporting_image']).default('supporting_image'),
   sort_order: z.number().int().min(-100000).max(100000),
 }).strict();
 
@@ -83,6 +84,9 @@ const entryFields = {
   media: z.array(galleryItemSchema).max(30).refine(
     (values) => new Set(values.map((value) => value.object_path)).size === values.length,
     'Gallery image paths must be unique.',
+  ).refine(
+    (values) => values.filter((value) => value.media_role === 'presentation_board').length <= 1,
+    'Only one image can be the presentation board.',
   ),
 };
 

@@ -15,6 +15,7 @@ src/
       work/page.tsx
       work/category/[slug]/page.tsx
       work/[slug]/page.tsx
+      preview/[id]/page.tsx
       page.tsx
       layout.tsx
     (auth)/
@@ -49,11 +50,13 @@ src/
   components/
     public/
       ProjectGallery.tsx
+      ProjectDetail.tsx
     admin/
     site-header.tsx
   lib/
     auth/authorization.ts
     data/admin-entries.ts
+    data/admin-entry-preview.ts
     data/admin-media.ts
     data/portfolio.ts
     http/public-response.ts
@@ -83,8 +86,9 @@ Because the App Router is rooted at `src/app`, the Next.js request proxy lives a
 - **Database** is the persistence source of truth. SQL migrations define tables, indexes, constraints, functions, and RLS policies.
 - **Technology catalog** lives in `src/lib/tech-stack.ts`; stable IDs and local SVG marks are code-owned options, while the profile JSON stores only the selected IDs and `known` / `learning` status. Category and portfolio-entry disciplines remain database-driven.
 - **Entry tools and tags** reuse the existing `portfolio_tags` / `entry_tags` association. The admin editor resolves catalog labels from `src/lib/tech-stack.ts` and submits their canonical names through `tag_names`; public detail pages render matches as tools with logos and retain unmatched labels as ordinary project tags. This requires no schema migration and keeps tags extensible.
-- **Entry presentation** is a constrained per-entry value (`standard` or `logofolio`) stored on `portfolio_entries`, not inferred from category names. In the logofolio layout, the first ordered media record is the tall board and subsequent records are logo gallery images. This keeps arbitrary categories data-driven while allowing a deliberate, reusable presentation.
+- **Entry presentation** is a constrained per-entry value (`standard` or `logofolio`) stored on `portfolio_entries`, not inferred from category names. Each `portfolio_media` row has a constrained role: `presentation_board`, `logo_variation`, or `supporting_image`. A partial unique index permits one board per entry; role-local ordering is preserved. Migration backfill maps existing logofolios' first image to the board and later images to logo variations so current pages retain their layout.
 - **Project gallery** is a small client boundary around native `<dialog>` for contained image previews. It measures image ratios and places each figure into the shortest CSS Grid column; entry data and signed URLs remain server-provided.
+- **Private project preview** uses `/preview/[id]`, verifies the signed-in user is an `admin_users` member in the server data layer, then reads the saved entry through the user's RLS-backed Supabase session. The shared `ProjectDetail` component renders the same standard/logofolio layout as public work. Preview media uses five-minute admin signed URLs.
 - **Storage** stores uploaded media in a private bucket. The database stores object paths and alt text/captions; never store binary data in SQL. The public data layer creates short-lived signed URLs only after it has confirmed the referenced entry is published.
 
 ## Data flow
@@ -101,10 +105,15 @@ Owner submits credentials → same-origin Route Handler signs in on the server a
 
 CMS selects an image → handler checks auth, MIME type, byte size, signature, and dimensions → upload to the private `portfolio-media` bucket using the signed-in user's client and storage RLS → store object path and accessible metadata → admin preview URLs expire after five minutes; public signed URLs are created only when the associated entry/profile reference is public.
 
+### Private entry preview
+
+Owner opens **Preview saved version** in the CMS → `/preview/[id]` validates the UUID and verifies the Supabase session plus `admin_users` membership → user-scoped RLS queries read the saved entry, category, tags, and media → private five-minute signed URLs are created for media → shared `ProjectDetail` renders the public layout with a private preview notice → response is `private, no-store` and marked `noindex`. Signed-out owners are redirected through the existing login flow to the exact validated preview path. Public selectors and APIs continue to filter to published entries.
+
 ## Rendering and caching
 
 - Public portfolio pages are server-rendered on demand. Public API responses use a one-hour shared-cache lifetime with a one-hour stale window, within the 12-hour limit. Public media URLs expire after 24 hours. Admin preview URLs expire after five minutes and are never cached.
 - Admin routes and user-specific session data are dynamic and must not be shared through public caches.
+- `/preview/[id]` is force-dynamic, sends `Cache-Control: private, no-store` and `X-Robots-Tag: noindex, nofollow, noarchive`, and is omitted from the sitemap.
 - A published detail URL is `/work/[slug]`; a category-filter URL is `/work/category/[slug]`.
 - `completed_on` is an optional database `date` projected through public/admin entry responses and formatted in UTC without shifting the stored calendar date.
 - The home route queries the latest eight published entries independently of the featured-work query; the public entries API retains its documented default ordering.

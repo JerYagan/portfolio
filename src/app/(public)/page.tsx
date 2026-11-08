@@ -29,7 +29,6 @@ export default async function HomePage() {
       <section aria-labelledby="profile-title" className="profile-page page-frame">
         <div className="profile-page__portrait"><PortfolioImage className="profile-page__image" eager image={profile.avatar} /></div>
         <div className="profile-page__copy">
-          <p className="eyebrow"><span className="eyebrow__rule" /> A little about me</p>
           <h1 id="profile-title">Hi, I’m <em>{profile.displayName}.</em></h1>
           {profile.headline ? <p className="profile-page__headline">{profile.headline}</p> : null}
           <p className="profile-page__bio">{intro}</p>

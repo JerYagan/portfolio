@@ -17,6 +17,15 @@
 - Prevent CSRF for state-changing handlers: accept same-origin requests, validate `Origin` where available, and use cookie SameSite protections. Do not mutate through GET.
 - Apply least-privilege Supabase grants and RLS on every table and Storage object. Test anon, authenticated non-admin, and admin policy outcomes before production launch.
 
+## Private project preview
+
+- `/preview/[id]` is a server-rendered HTML page, not a public API. Validate the ID as a UUID and independently verify the Supabase session and `admin_users` membership before loading any entry data. `proxy.ts` may refresh cookies but is not the authorization boundary.
+- Read saved entries through the authenticated user's Supabase SSR client so database RLS remains active. Do not use the anonymous public reader or a service-role key to fetch drafts.
+- Sign preview image paths through the admin storage policy with the existing five-minute lifetime. Never expose object paths or create a public URL for draft images.
+- Send `Cache-Control: private, no-store, max-age=0, must-revalidate` and `X-Robots-Tag: noindex, nofollow, noarchive`; page metadata must also set robots to noindex. Do not add preview URLs to sitemaps or public entry responses.
+- The CMS preview link opens the latest saved entry in a new tab. It must not include a shared secret or accept an arbitrary redirect target. The login return path is restricted to a valid `/preview/<uuid>` path.
+- Keep published-only filters unchanged in public pages and APIs. Unknown IDs use the not-found response without exposing whether a draft exists.
+
 ## Validation and output safety
 
 - Validate request JSON byte length, URL schemes, slug format, IDs, enum states, and array sizes with Zod on the server. Check admin membership before returning endpoint-specific validation or origin errors.

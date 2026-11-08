@@ -5,7 +5,7 @@ export async function replaceAssociations(
   entryId: string,
   tagNames?: string[],
   tagIds?: string[],
-  media?: Array<{ object_path: string; alt_text: string; caption?: string | null; sort_order: number }>,
+  media?: Array<{ object_path: string; alt_text: string; caption?: string | null; media_role: 'presentation_board' | 'logo_variation' | 'supporting_image'; sort_order: number }>,
 ) {
   if (tagNames !== undefined || tagIds !== undefined) {
     const resolved = tagIds ?? await resolveTagNames(client, tagNames ?? []);

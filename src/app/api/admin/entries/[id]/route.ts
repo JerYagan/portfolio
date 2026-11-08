@@ -4,7 +4,7 @@ import { adminError, adminFailure, adminJson, entryDatabaseErrorResponse } from 
 import { readJsonBody } from '@/lib/http/admin-request';
 import { revalidatePortfolio } from '@/lib/http/revalidate-portfolio';
 import { replaceAssociations } from '@/lib/data/admin-entries';
-import { isMissingCompletionDateColumn, isMissingPresentationColumn } from '@/lib/data/completion-date';
+import { isMissingCompletionDateColumn, isMissingPresentationColumn, isMissingMediaRoleColumn } from '@/lib/data/completion-date';
 import { updateEntrySchema, uuidSchema } from '@/lib/validation/admin';
 
 export const dynamic = 'force-dynamic';
@@ -29,9 +29,17 @@ export async function GET(_request: Request, context: RouteContext) {
   if (error) return adminFailure();
   if (!data) return adminError('NOT_FOUND', 'Entry not found.', 404);
 
-  const { data: rawMedia, error: mediaError } = await auth.client.from('portfolio_media')
-    .select('id,object_path,alt_text,caption,sort_order').eq('entry_id', parsedId.data).order('sort_order', { ascending: true });
-  if (mediaError) return adminFailure();
+  const mediaWithRoles = await auth.client.from('portfolio_media')
+    .select('id,object_path,alt_text,caption,sort_order,media_role').eq('entry_id', parsedId.data).order('sort_order', { ascending: true });
+  let rawMedia = mediaWithRoles.data;
+  if (isMissingMediaRoleColumn(mediaWithRoles.error)) {
+    const legacyMedia = await auth.client.from('portfolio_media').select('id,object_path,alt_text,caption,sort_order').eq('entry_id', parsedId.data).order('sort_order', { ascending: true });
+    if (legacyMedia.error) return adminFailure();
+    rawMedia = legacyMedia.data?.map((item, index) => ({
+      ...item,
+      media_role: data.presentation === 'logofolio' ? (index === 0 ? 'presentation_board' : 'logo_variation') : 'supporting_image',
+    })) ?? null;
+  } else if (mediaWithRoles.error) return adminFailure();
   const [media, thumbnailPreviewUrl] = await Promise.all([
     Promise.all((rawMedia ?? []).map(async (item) => ({ ...item, preview_url: await signAdminPath(auth.client, item.object_path) }))),
     signAdminPath(auth.client, data.thumbnail_path),
@@ -56,6 +64,11 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (!parsedId.success) return adminError('NOT_FOUND', 'Entry not found.', 404);
   const parsed = await readJsonBody(request, updateEntrySchema);
   if ('response' in parsed) return parsed.response;
+  if (parsed.data.media?.length) {
+    const roleColumn = await auth.client.from('portfolio_media').select('media_role').limit(0);
+    if (isMissingMediaRoleColumn(roleColumn.error)) return adminError('MIGRATION_REQUIRED', 'Apply the portfolio media roles migration before saving gallery images.', 503);
+    if (roleColumn.error) return adminFailure();
+  }
 
   const { data: current, error: currentError } = await auth.client.from('portfolio_entries')
     .select(entryColumns).eq('id', parsedId.data).maybeSingle();
@@ -63,7 +76,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (!current) return adminError('NOT_FOUND', 'Entry not found.', 404);
 
   const { data: existingMedia, error: mediaReadError } = await auth.client.from('portfolio_media')
-    .select('object_path,alt_text,caption,sort_order').eq('entry_id', parsedId.data);
+    .select('object_path,alt_text,caption,media_role,sort_order').eq('entry_id', parsedId.data);
   if (mediaReadError) return adminFailure();
   const previousPaths = [current.thumbnail_path, ...(existingMedia ?? []).map((item) => item.object_path)].filter((path): path is string => Boolean(path));
   const { data: existingTags, error: tagsReadError } = await auth.client.from('entry_tags').select('tag_id').eq('entry_id', parsedId.data);

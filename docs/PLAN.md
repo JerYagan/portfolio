@@ -79,7 +79,7 @@ Phase 5 unit, typecheck, production build, source-level accessibility, safe read
 ## Phase 6 — Vercel deployment planning
 
 - [x] Document project settings, environment values, Preview/Production boundaries, Supabase redirects, and launch checks in `DEPLOYMENT_VERCEL.md`.
-- [ ] Apply the additive completion-date/technology migration to the intended Supabase project.
+- [ ] Apply the additive completion-date/technology migration to the intended Supabase project; read-only checks show `completed_on` is missing while `presentation` is available.
 - [ ] Choose the Git repository, production branch, domain, Preview database, and Supabase backup/restore plan.
 - [ ] Create and verify a Vercel Preview deployment after project details are available.
 - [ ] Complete the production launch checklist and verify a rollback/restore path.
@@ -126,13 +126,62 @@ The entry tool selector reuses the existing tag associations and API field, so t
 - [x] Add a per-entry standard/logofolio presentation setting to the CMS and public entry detail.
 - [x] Render the first ordered logofolio image as a tall board, selected tools below it, and later images as the logo gallery.
 - [x] Add an additive database migration and compatibility handling for projects where it has not yet been applied.
-- [ ] Apply the presentation migration to Supabase and verify a populated logofolio entry in the browser.
+- [x] Verify the `presentation` column is available and review the existing logofolio entry in the browser.
 
-The feature is implemented in the application. `npm run typecheck` and `npm run build` pass. Standard entries continue to work on the prior schema; selecting logofolio requires applying `20261108020000_entry_presentation_layout.sql` to the connected Supabase project. Populated browser verification remains pending.
+The feature is implemented in the application. `npm run typecheck` and `npm run build` pass. Standard entries continue to work on older schemas. Read-only checks confirm `presentation` is available; the completion-date column still needs its migration.
 
 ## 2026-11-08 legacy schema read fallback
 
 - [x] Handle both missing optional entry columns (`completed_on` and `presentation`) in sequence so public reads continue to work before either additive migration is applied.
 - [x] Keep detailed Supabase read diagnostics in development server logs while preserving the generic public error response.
-- [ ] Recheck the local public API after a clean dev-server reload.
+- [x] Recheck the local public API after a clean dev-server reload.
+
+## 2026-11-08 mobile landing headings
+
+- [x] Align the Featured work and Latest work section headings and action links to the left on mobile.
+- [x] Verify both headings at narrow mobile widths in a browser.
+
+## 2026-11-08 logofolio width and next-step follow-up
+
+- [x] Expand the logofolio presentation board to the full page content width, bounded by the shared page frame.
+- [x] Remove the redundant divider above the logofolio return link while keeping the footer rule.
+- [x] Replace the broad improvements list with an implementation plan for draft preview, explicit logofolio media roles, and reusable case-study sections.
+- [x] Restart the local development server and verify the home page, public entries API, and existing logofolio route return HTTP 200.
+- [x] Verify the public entries API returns the existing `november-2026-logofolio` entry and a thumbnail; no duplicate or CMS write was made.
+- [x] Verify the `presentation` database column is available and confirm the `completed_on` column is still missing through read-only REST queries.
+- [x] Verify signed-out `/admin` redirects and anonymous admin categories, entries, and profile endpoints return HTTP 401.
+- [x] Run `npm run typecheck` successfully.
+- [ ] Apply the missing completion-date migration in the Supabase Dashboard after checking the Production target and backup state.
+- [x] Review logofolio width on desktop and mobile, public theme cycling, gallery modal/outside-click/Escape behavior, mobile navigation/header scroll, keyboard focus, and CMS tool search/selection in a browser.
+- [ ] Choose deployment repository, branch, domain, Preview database, and backup/restore plan before creating a Vercel deployment.
+
+The existing logofolio record is already published and contains placeholder-like copy and metadata; no content was changed. It currently has a thumbnail and one board image, with no logo variation images, so a populated logofolio gallery and final content accuracy still need owner input. No database or CMS content writes were performed. See `docs/NEXT_STEPS.md` for the remaining work.
+
+## 2026-11-08 private saved-entry preview
+
+- [x] Add an owner-only `/preview/[id]` route with UUID validation and an independent server-side `admin_users` membership check.
+- [x] Read saved entry data through the authenticated RLS-backed Supabase client and sign preview media for five minutes.
+- [x] Reuse the public `ProjectDetail` renderer for standard and logofolio pages and add a private preview notice with a return-to-editor link.
+- [x] Add a **Preview saved version** link to the CMS editor that opens a new tab and previews only persisted form data.
+- [x] Restrict the login return path to an admin path or a valid `/preview/<uuid>`; add `private, no-store` and `noindex`/`nofollow`/`noarchive` headers and metadata.
+- [x] Update API, security, architecture, product, design, testing, decision, and improvement-plan documentation.
+- [x] Verify signed-out requests redirect before rendering entry content; verify cache and crawler headers.
+- [x] Sign in as the owner and verify the existing saved entry renders in the shared preview layout and the CMS link opens in a separate tab.
+- [x] Run pinned Node.js `24.22.2` typecheck and production build successfully.
+- [ ] Verify a saved draft preview and public draft exclusion against a non-production entry; no draft entry was available, so none was created in the Production database.
+
+The local dev server was restarted after the production build. No entry content or database rows were changed.
+
+## 2026-11-08 explicit media roles and portfolio branding
+
+- [x] Add validated `presentation_board`, `logo_variation`, and `supporting_image` media roles and enforce at most one presentation board per entry.
+- [x] Add an additive migration that backfills existing logofolio ordering without changing its visual result.
+- [x] Add admin role selection for existing and new media plus reorder controls scoped to each role.
+- [x] Render a full-width role-selected board, then tools, then distinct logo and supporting image galleries.
+- [x] Keep public and admin entry reads compatible before migration; return `503 MIGRATION_REQUIRED` for gallery writes until it is applied.
+- [x] Replace public/admin wordmarks and site icons with the supplied local logo and favicon assets.
+- [ ] Apply the migration to the configured Supabase project, then verify role changes using a non-production entry.
+- [x] Run pinned Node.js `24.22.2` typecheck and production build.
+- [x] Verify the homepage and configured favicon/manifest URLs return HTTP 200 with expected icon metadata.
+- [ ] Verify the role selector and role-local reordering in the browser after applying the media-role migration.
 

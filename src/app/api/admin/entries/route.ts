@@ -4,7 +4,7 @@ import { readJsonBody } from '@/lib/http/admin-request';
 import { revalidatePortfolio } from '@/lib/http/revalidate-portfolio';
 import { createEntrySchema, adminEntryListQuerySchema } from '@/lib/validation/admin';
 import { replaceAssociations } from '@/lib/data/admin-entries';
-import { isMissingCompletionDateColumn, isMissingPresentationColumn } from '@/lib/data/completion-date';
+import { isMissingCompletionDateColumn, isMissingPresentationColumn, isMissingMediaRoleColumn } from '@/lib/data/completion-date';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +46,11 @@ export async function POST(request: Request) {
   if ('response' in parsed) return parsed.response;
 
   const values = parsed.data;
+  if (values.media?.length) {
+    const roleColumn = await auth.client.from('portfolio_media').select('media_role').limit(0);
+    if (isMissingMediaRoleColumn(roleColumn.error)) return adminError('MIGRATION_REQUIRED', 'Apply the portfolio media roles migration before saving gallery images.', 503);
+    if (roleColumn.error) return adminFailure();
+  }
   const presentationColumn = await auth.client.from('portfolio_entries').select('presentation').limit(0);
   const presentationColumnMissing = isMissingPresentationColumn(presentationColumn.error);
   if (presentationColumn.error && !presentationColumnMissing) return adminFailure();

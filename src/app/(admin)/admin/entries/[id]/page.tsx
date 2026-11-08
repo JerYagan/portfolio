@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { EntryEditor } from '@/components/admin/EntryEditor';
 import { signAdminPath } from '@/lib/data/admin-media';
+import { isMissingMediaRoleColumn } from '@/lib/data/completion-date';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { uuidSchema } from '@/lib/validation/admin';
 
@@ -18,8 +19,16 @@ export default async function EditEntryPage({ params }: { params: Promise<{ id: 
     client.from('portfolio_categories').select('id,name').order('sort_order').order('name'),
   ]);
   if (error || !row) notFound();
-  const { data: rawMedia, error: mediaError } = await client.from('portfolio_media').select('id,object_path,alt_text,caption,sort_order').eq('entry_id', parsedId.data).order('sort_order', { ascending: true });
-  if (mediaError) notFound();
+  const mediaWithRoles = await client.from('portfolio_media').select('id,object_path,alt_text,caption,sort_order,media_role').eq('entry_id', parsedId.data).order('sort_order', { ascending: true });
+  let rawMedia = mediaWithRoles.data;
+  if (isMissingMediaRoleColumn(mediaWithRoles.error)) {
+    const legacyMedia = await client.from('portfolio_media').select('id,object_path,alt_text,caption,sort_order').eq('entry_id', parsedId.data).order('sort_order', { ascending: true });
+    if (legacyMedia.error) notFound();
+    rawMedia = legacyMedia.data?.map((item, index) => ({
+      ...item,
+      media_role: row.presentation === 'logofolio' ? (index === 0 ? 'presentation_board' : 'logo_variation') : 'supporting_image',
+    })) ?? null;
+  } else if (mediaWithRoles.error) notFound();
   const [thumbnailPreviewUrl, media] = await Promise.all([
     signAdminPath(client, row.thumbnail_path),
     Promise.all((rawMedia ?? []).map(async (item) => ({ ...item, preview_url: await signAdminPath(client, item.object_path) }))),
