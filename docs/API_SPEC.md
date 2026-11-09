@@ -41,7 +41,7 @@ Returns visible categories sorted by `sort_order`, then name. No auth required.
 
 Query parameters: `category` (category slug, optional), `featured` (`true|false`, optional), `q` (search title/summary, optional), `page` (default `1`), `limit` (default `12`, maximum `48`). Returns only published entries in visible categories. Sort featured first, then `sort_order`, then `published_at desc`.
 
-Each list item includes `id`, `title`, `slug`, `summary`, `category` (`name`, `slug`), `thumbnail` (`url`, `alt` or null), `year`, `completed_on` (`YYYY-MM-DD` or null), `is_featured`, `published_at`. Media `url` is a 24-hour signed URL generated server-side after publication/visibility checks; `meta.media_expires_at` communicates its expiry when the response includes media. Public cache lifetime must not exceed 12 hours.
+Each list item includes `id`, `title`, `slug`, `summary`, `category` (`name`, `slug`), `thumbnail` (`url`, `alt` or null), `year`, `completed_on` (`YYYY-MM-DD` or null), `project_status` (`in_progress|completed` or null), `is_featured`, `published_at`. Media `url` is a 24-hour signed URL generated server-side after publication/visibility checks; `meta.media_expires_at` communicates its expiry when the response includes media. Public cache lifetime must not exceed 12 hours.
 
 ```json
 { "data": [], "meta": { "page": 1, "limit": 12, "total": 0, "total_pages": 0 } }
@@ -53,7 +53,7 @@ Unknown category slug returns `404 NOT_FOUND`. Invalid query values return `400 
 
 Returns one published entry and its visible category, tags, and ordered gallery. Unknown and draft slugs both return `404 NOT_FOUND`. Gallery URLs expire after 24 hours; include `meta.media_expires_at`.
 
-Detail fields include the list fields plus `presentation` (`standard|logofolio`), `body_markdown`, `project_url`, `repository_url`, `client_label`, `role`, `seo_title`, `seo_description`, and `media[]` (`url`, `alt`, `caption`, `sort_order`). For `logofolio`, the first ordered media item is the tall presentation board and remaining items are the logo gallery.
+Detail fields include the list fields plus `presentation` (`standard|logofolio`), `body_markdown`, `case_study_sections[]` (`heading`, `body_markdown`), `project_url`, `repository_url`, `client_label`, `role`, `seo_title`, `seo_description`, and `media[]` (`url`, `alt`, `caption`, `sort_order`, `media_role`, `page_name`, `device_label`). Page screenshot media uses `media_role: page_screenshot` and includes a page name plus `desktop|tablet|mobile` device label; other media has null page metadata. Sections are returned in saved order; incomplete sections are omitted. Existing `summary` remains the short introduction.
 
 ### `GET /api/portfolio/profile`
 
@@ -66,10 +66,10 @@ All admin routes return `401 UNAUTHENTICATED` when signed out and `403 FORBIDDEN
 ### Entries
 
 - `GET /api/admin/entries?status=draft|published|all&page=1&limit=20&q=` — paginated owner list, newest-updated first. `limit` is 1–100; `q` searches title and summary.
-- `POST /api/admin/entries` — create draft or published entry. Required: `title`, `slug`, `summary`, `category_id`; optional remaining `portfolio_entries` fields including `presentation` (`standard|logofolio`, defaults to `standard`), `completed_on` (`YYYY-MM-DD` or null), `tag_names[]` or `tag_ids[]`, and `media[]` (`object_path`, `alt_text`, `caption`, `media_role`, `sort_order`). `media_role` is `presentation_board|logo_variation|supporting_image`, defaults to `supporting_image`, and at most one media item may be the presentation board. Tag names are resolved to reusable tags.
+- `POST /api/admin/entries` — create draft or published entry. Required: `title`, `slug`, `summary`, `category_id`; optional remaining `portfolio_entries` fields including `presentation` (`standard|logofolio`, defaults to `standard`), `completed_on` (`YYYY-MM-DD` or null), `project_status` (`in_progress|completed|null`, defaults to `in_progress`), `case_study_sections[]` (`heading`, `body_markdown`), `tag_names[]` or `tag_ids[]`, and `media[]` (`object_path`, `alt_text`, `caption`, `media_role`, `page_name`, `device_label`, `sort_order`). Case-study sections allow at most 12 items, headings up to 80 characters, and Markdown bodies up to 8,000 characters. `media_role` is `presentation_board|logo_variation|supporting_image|page_screenshot`, defaults to `supporting_image`, and at most one media item may be the presentation board. A `page_screenshot` requires a page name (1–80 characters) and a device label (`desktop|tablet|mobile`). Tag names are resolved to reusable tags.
 - `GET /api/admin/entries/[id]` — fetch full editable entry, category, tags, ordered gallery, and five-minute signed preview URLs.
 - The CMS editor links to `/preview/[id]` in a new tab for an existing saved entry. The preview displays the last saved state, including drafts; unsaved form changes are not included.
-- `PATCH /api/admin/entries/[id]` — partial update. Unknown fields are rejected. `presentation` accepts `standard|logofolio`; `completed_on` accepts a valid `YYYY-MM-DD` calendar date or null. Category, tags, and gallery are validated; each media item accepts `media_role` from `presentation_board|logo_variation|supporting_image`, with at most one board per entry. `tag_names[]` may contain canonical names from the code-owned technology catalog (shown as project tools with local logos) or free-form project labels. The handler compensates by restoring entry associations if a multi-step association write fails. Unreferenced old-image cleanup failures are included in `meta.cleanup_pending[]` for retry.
+- `PATCH /api/admin/entries/[id]` — partial update. Unknown fields are rejected. `presentation` accepts `standard|logofolio`; `completed_on` accepts a valid `YYYY-MM-DD` calendar date or null; `project_status` accepts `in_progress|completed|null`; `case_study_sections[]` has the same count and text limits as create and preserves array order. Category, tags, and gallery are validated; each media item accepts `media_role` from `presentation_board|logo_variation|supporting_image|page_screenshot`, with at most one board per entry. A `page_screenshot` requires a page name and device label. `tag_names[]` may contain canonical names from the code-owned technology catalog (shown as project tools with local logos) or free-form project labels. The handler compensates by restoring entry associations if a multi-step association write fails. Unreferenced old-image cleanup failures are included in `meta.cleanup_pending[]` for retry.
 - `DELETE /api/admin/entries/[id]` — permanently delete entry and relation rows, then remove unreferenced Storage objects. If cleanup fails, returns `200` with `meta.cleanup_pending[]` so the client can retry; successful cleanup returns `204`.
 
 Successful create returns `201`; update `200`; delete `204`. Slug collision returns `409 SLUG_TAKEN`. Invalid category, body, or tag references return `400 VALIDATION_ERROR`.
@@ -79,6 +79,12 @@ When the optional `completed_on` column is missing on an older schema, public re
 When `presentation` is missing on an older schema, public reads and standard CMS entries default to `standard`; attempts to save `logofolio` return `503 MIGRATION_REQUIRED` until `20261108020000_entry_presentation_layout.sql` is applied.
 
 When `portfolio_media.media_role` is missing, public pages and editor reads fall back to the prior first-image logofolio convention. Admin saves that include gallery images return `503 MIGRATION_REQUIRED` until `20261108030000_portfolio_media_roles.sql` is applied.
+
+When `portfolio_entries.case_study_sections` is missing, public pages continue to render without structured sections. Saving non-empty sections returns `503 MIGRATION_REQUIRED` until `20261108040000_case_study_sections.sql` is applied; empty section arrays remain compatible with older schemas.
+
+When `portfolio_entries.project_status` is missing, public pages omit the progress label. Admin create requires migration `20261108050000_entry_project_status.sql`; admin updates that only clear the optional status remain compatible with older schemas.
+
+When `portfolio_media.page_name` or `device_label` is missing, public/admin reads fall back to existing media fields and display no website screenshot entries. Saving `page_screenshot` media returns `503 MIGRATION_REQUIRED` until `20261108060000_website_page_screenshots.sql` is applied. Other media roles remain compatible with the prior schema.
 
 ### Categories
 

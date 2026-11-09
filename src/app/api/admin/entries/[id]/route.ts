@@ -4,7 +4,7 @@ import { adminError, adminFailure, adminJson, entryDatabaseErrorResponse } from 
 import { readJsonBody } from '@/lib/http/admin-request';
 import { revalidatePortfolio } from '@/lib/http/revalidate-portfolio';
 import { replaceAssociations } from '@/lib/data/admin-entries';
-import { isMissingCompletionDateColumn, isMissingPresentationColumn, isMissingMediaRoleColumn } from '@/lib/data/completion-date';
+import { isMissingCompletionDateColumn, isMissingPresentationColumn, isMissingMediaRoleColumn, isMissingCaseStudySectionsColumn, isMissingProjectStatusColumn, isMissingWebsitePageMediaColumn } from '@/lib/data/completion-date';
 import { updateEntrySchema, uuidSchema } from '@/lib/validation/admin';
 
 export const dynamic = 'force-dynamic';
@@ -29,19 +29,33 @@ export async function GET(_request: Request, context: RouteContext) {
   if (error) return adminFailure();
   if (!data) return adminError('NOT_FOUND', 'Entry not found.', 404);
 
-  const mediaWithRoles = await auth.client.from('portfolio_media')
-    .select('id,object_path,alt_text,caption,sort_order,media_role').eq('entry_id', parsedId.data).order('sort_order', { ascending: true });
-  let rawMedia = mediaWithRoles.data;
-  if (isMissingMediaRoleColumn(mediaWithRoles.error)) {
+  type EditableMediaRow = { id: string; object_path: string; alt_text: string; caption: string | null; sort_order: number; media_role?: string; page_name?: string | null; device_label?: string | null };
+  const mediaWithMetadata = await auth.client.from('portfolio_media')
+    .select('id,object_path,alt_text,caption,sort_order,media_role,page_name,device_label').eq('entry_id', parsedId.data).order('sort_order', { ascending: true });
+  let rawMedia: EditableMediaRow[] | null;
+  if (isMissingWebsitePageMediaColumn(mediaWithMetadata.error)) {
+    const mediaWithRoles = await auth.client.from('portfolio_media')
+      .select('id,object_path,alt_text,caption,sort_order,media_role').eq('entry_id', parsedId.data).order('sort_order', { ascending: true });
+    if (isMissingMediaRoleColumn(mediaWithRoles.error)) {
+      const legacyMedia = await auth.client.from('portfolio_media').select('id,object_path,alt_text,caption,sort_order').eq('entry_id', parsedId.data).order('sort_order', { ascending: true });
+      if (legacyMedia.error) return adminFailure();
+      rawMedia = legacyMedia.data?.map((item, index) => ({
+        ...item,
+        media_role: data.presentation === 'logofolio' ? (index === 0 ? 'presentation_board' : 'logo_variation') : 'supporting_image',
+      })) ?? null;
+    } else if (mediaWithRoles.error) return adminFailure();
+    else rawMedia = mediaWithRoles.data as EditableMediaRow[] | null;
+  } else if (isMissingMediaRoleColumn(mediaWithMetadata.error)) {
     const legacyMedia = await auth.client.from('portfolio_media').select('id,object_path,alt_text,caption,sort_order').eq('entry_id', parsedId.data).order('sort_order', { ascending: true });
     if (legacyMedia.error) return adminFailure();
     rawMedia = legacyMedia.data?.map((item, index) => ({
       ...item,
       media_role: data.presentation === 'logofolio' ? (index === 0 ? 'presentation_board' : 'logo_variation') : 'supporting_image',
     })) ?? null;
-  } else if (mediaWithRoles.error) return adminFailure();
+  } else if (mediaWithMetadata.error) return adminFailure();
+  else rawMedia = mediaWithMetadata.data as EditableMediaRow[] | null;
   const [media, thumbnailPreviewUrl] = await Promise.all([
-    Promise.all((rawMedia ?? []).map(async (item) => ({ ...item, preview_url: await signAdminPath(auth.client, item.object_path) }))),
+    Promise.all((rawMedia ?? []).map(async (item) => ({ ...item, page_name: item.page_name ?? null, device_label: item.device_label ?? null, preview_url: await signAdminPath(auth.client, item.object_path) }))),
     signAdminPath(auth.client, data.thumbnail_path),
   ]);
   const entryTagLinks = (data.entry_tags ?? []) as Array<{
@@ -50,6 +64,7 @@ export async function GET(_request: Request, context: RouteContext) {
   return adminJson({
     ...data,
     presentation: data.presentation ?? 'standard',
+    project_status: data.project_status ?? null,
     tags: entryTagLinks.flatMap((link) => Array.isArray(link.portfolio_tags) ? link.portfolio_tags : link.portfolio_tags ? [link.portfolio_tags] : []),
     media,
     thumbnail_preview_url: thumbnailPreviewUrl,
@@ -68,6 +83,18 @@ export async function PATCH(request: Request, context: RouteContext) {
     const roleColumn = await auth.client.from('portfolio_media').select('media_role').limit(0);
     if (isMissingMediaRoleColumn(roleColumn.error)) return adminError('MIGRATION_REQUIRED', 'Apply the portfolio media roles migration before saving gallery images.', 503);
     if (roleColumn.error) return adminFailure();
+    if (parsed.data.media.some((item) => item.media_role === 'page_screenshot')) {
+      const pageMediaColumns = await auth.client.from('portfolio_media').select('page_name,device_label').limit(0);
+      if (isMissingWebsitePageMediaColumn(pageMediaColumns.error)) return adminError('MIGRATION_REQUIRED', 'Apply the website page screenshots migration before adding website screenshots.', 503);
+      if (pageMediaColumns.error) return adminFailure();
+    }
+  }
+  let caseStudySectionsColumnMissing = false;
+  if (parsed.data.case_study_sections !== undefined) {
+    const sectionsColumn = await auth.client.from('portfolio_entries').select('case_study_sections').limit(0);
+    caseStudySectionsColumnMissing = isMissingCaseStudySectionsColumn(sectionsColumn.error);
+    if (caseStudySectionsColumnMissing && parsed.data.case_study_sections.length) return adminError('MIGRATION_REQUIRED', 'Apply the case-study sections migration before saving sections.', 503);
+    if (sectionsColumn.error && !caseStudySectionsColumnMissing) return adminFailure();
   }
 
   const { data: current, error: currentError } = await auth.client.from('portfolio_entries')
@@ -86,6 +113,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   delete patch.tag_names;
   delete patch.tag_ids;
   delete patch.media;
+  if (caseStudySectionsColumnMissing) delete patch.case_study_sections;
   if (patch.presentation !== undefined) {
     const presentationColumn = await auth.client.from('portfolio_entries').select('presentation').limit(0);
     if (isMissingPresentationColumn(presentationColumn.error)) {
@@ -101,6 +129,15 @@ export async function PATCH(request: Request, context: RouteContext) {
       if (patch.completed_on !== null) return adminError('MIGRATION_REQUIRED', 'Apply the portfolio completion-date migration before saving a completion date.', 503);
       delete patch.completed_on;
     } else if (completionColumn.error) {
+      return adminFailure();
+    }
+  }
+  if (patch.project_status !== undefined) {
+    const projectStatusColumn = await auth.client.from('portfolio_entries').select('project_status').limit(0);
+    if (isMissingProjectStatusColumn(projectStatusColumn.error)) {
+      if (patch.project_status !== null) return adminError('MIGRATION_REQUIRED', 'Apply the project progress migration before saving project progress.', 503);
+      delete patch.project_status;
+    } else if (projectStatusColumn.error) {
       return adminFailure();
     }
   }

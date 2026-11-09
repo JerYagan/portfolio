@@ -40,20 +40,21 @@ Replace the current ordering convention, where the first gallery image is the pr
 - [x] The CMS makes each image's role clear, allows role changes, and keeps reordering within a role.
 - [ ] Apply the migration to the configured Supabase project and verify role changes on a non-production logofolio.
 
-## 3. Reusable case-study sections
+## 3. Reusable case-study sections — implemented
 
 Give project pages optional structured sections for a clearer project story without creating a separate page design for each portfolio category.
 
 ### Implementation
 
-- Add an ordered list of optional sections with a heading and rich-text or Markdown body.
-- Support reusable section labels such as **Context**, **Approach**, **Outcome**, and **Reflection**, while allowing custom headings.
-- Add accessible add, edit, remove, and reorder controls to the CMS entry editor.
-- Render only completed sections on public project pages and retain the current description as the summary/intro.
-- Validate the section count and content length on the server; update the schema, API contract, and CMS guidance together.
+- Added optional ordered `case_study_sections` JSON on each entry, capped at 12; each heading is up to 80 characters and each Markdown body up to 8,000 characters.
+- Added suggested Context, Approach, Outcome, and Reflection headings while allowing custom headings.
+- Added accessible add, edit, remove, and keyboard-operable move controls to the CMS entry editor.
+- Rendered completed sections on standard and logofolio public/preview details through the safe Markdown renderer. The existing short summary remains the introduction; incomplete sections are omitted.
+- Added the additive schema migration and updated validation, API, data-model, security, architecture, design, and product documentation.
 
 ### Acceptance criteria
 
-- Owners can add, edit, remove, and reorder sections without changing the entry category or presentation type.
-- Empty sections are omitted from public pages.
-- Existing projects render unchanged until sections are added.
+- [x] Owners can add, edit, remove, and reorder sections without changing the entry category or presentation type.
+- [x] Empty/incomplete sections are omitted from public pages.
+- [x] Existing projects render unchanged until sections are added.
+- [ ] Apply the migration to the configured Supabase project and verify saved sections on a non-production entry.

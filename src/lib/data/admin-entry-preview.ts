@@ -1,8 +1,8 @@
 import 'server-only';
 import { getAdminPageContext } from '@/lib/auth/authorization';
 import { signAdminPath } from '@/lib/data/admin-media';
-import { isMissingMediaRoleColumn } from '@/lib/data/completion-date';
-import type { PublicEntry, PublicGalleryImage, PublicTag } from '@/lib/data/portfolio';
+import { isMissingMediaRoleColumn, isMissingWebsitePageMediaColumn } from '@/lib/data/completion-date';
+import { normalizeCaseStudySections, type PublicEntry, type PublicGalleryImage, type PublicTag } from '@/lib/data/portfolio';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 type EntryRow = {
@@ -18,7 +18,9 @@ type EntryRow = {
   repository_url: string | null;
   year: number | null;
   completed_on?: string | null;
+  project_status?: 'in_progress' | 'completed' | null;
   presentation?: 'standard' | 'logofolio';
+  case_study_sections?: unknown;
   client_label: string | null;
   role: string | null;
   is_featured: boolean;
@@ -27,7 +29,7 @@ type EntryRow = {
 };
 
 type CategoryRow = { id: string; name: string; slug: string };
-type MediaRow = { object_path: string; alt_text: string; caption: string | null; sort_order: number; media_role?: PublicGalleryImage['media_role'] };
+type MediaRow = { object_path: string; alt_text: string; caption: string | null; sort_order: number; media_role?: PublicGalleryImage['media_role']; page_name?: string | null; device_label?: PublicGalleryImage['device_label'] };
 type TagRow = { id: string; name: string; slug: string };
 type EntryTagRow = { portfolio_tags: TagRow | TagRow[] | null };
 
@@ -51,11 +53,14 @@ export async function getAdminEntryPreview(id: string): Promise<AdminEntryPrevie
   if (!rawEntry) return { status: 'not-found' };
 
   const row = rawEntry as unknown as EntryRow;
-  const [categoryResult, initialMediaResult, tagsResult] = await Promise.all([
+  const [categoryResult, initialMediaResultWithMetadata, tagsResult] = await Promise.all([
     client.from('portfolio_categories').select('id,name,slug').eq('id', row.category_id).maybeSingle(),
-    client.from('portfolio_media').select('object_path,alt_text,caption,sort_order,media_role').eq('entry_id', id).order('sort_order', { ascending: true }),
+    client.from('portfolio_media').select('object_path,alt_text,caption,sort_order,media_role,page_name,device_label').eq('entry_id', id).order('sort_order', { ascending: true }),
     client.from('entry_tags').select('portfolio_tags(id,name,slug)').eq('entry_id', id),
   ]);
+  const initialMediaResult = isMissingWebsitePageMediaColumn(initialMediaResultWithMetadata.error)
+    ? await client.from('portfolio_media').select('object_path,alt_text,caption,sort_order,media_role').eq('entry_id', id).order('sort_order', { ascending: true })
+    : initialMediaResultWithMetadata;
   if (categoryResult.error || tagsResult.error) return { status: 'error' };
 
   const category = categoryResult.data as unknown as CategoryRow | null;
@@ -76,7 +81,7 @@ export async function getAdminEntryPreview(id: string): Promise<AdminEntryPrevie
   }
   const media: PublicGalleryImage[] = (await Promise.all(rawMedia.map(async (image) => {
     const url = await signAdminPath(client, image.object_path);
-    return url ? { url, alt: image.alt_text, caption: image.caption, sort_order: image.sort_order, media_role: image.media_role ?? 'supporting_image' } : null;
+    return url ? { url, alt: image.alt_text, caption: image.caption, sort_order: image.sort_order, media_role: image.media_role ?? 'supporting_image', page_name: image.page_name ?? null, device_label: image.device_label ?? null } : null;
   }))).filter((image): image is PublicGalleryImage => image !== null);
 
   const tagRows = (tagsResult.data ?? []) as unknown as EntryTagRow[];
@@ -96,11 +101,13 @@ export async function getAdminEntryPreview(id: string): Promise<AdminEntryPrevie
       thumbnail: thumbnailUrl && row.thumbnail_alt?.trim() ? { url: thumbnailUrl, alt: row.thumbnail_alt.trim() } : null,
       year: row.year,
       completedOn: row.completed_on ?? null,
+      projectStatus: row.project_status ?? null,
       isFeatured: row.is_featured,
       publishedAt: row.published_at,
       updatedAt: row.updated_at,
       presentation: row.presentation === 'logofolio' ? 'logofolio' : 'standard',
       bodyMarkdown: row.body_markdown,
+      caseStudySections: normalizeCaseStudySections(row.case_study_sections),
       projectUrl: safeHttpsUrl(row.project_url),
       repositoryUrl: safeHttpsUrl(row.repository_url),
       clientLabel: row.client_label,

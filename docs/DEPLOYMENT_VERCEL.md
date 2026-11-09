@@ -21,6 +21,7 @@ The Vercel Node selector exposes major versions, not an exact patch. Keep the re
 - [ ] Push the project and lockfile to the Git provider you intend to use.
 - [ ] Pick which repository branch Vercel should treat as production; do not assume the branch name.
 - [ ] Confirm the database migration `20261108010000_profile_tech_and_entry_completion.sql` is applied to the intended Supabase project before deploying this application version.
+- [ ] Apply all later pending schema migrations in timestamp order, including `20261108060000_website_page_screenshots.sql`, before saving full-page screenshot media.
 - [ ] Decide whether a separate development Supabase project is available for Preview deployments. Do not point untrusted Preview branches at the production database.
 - [ ] Choose the production hostname and confirm who controls its DNS.
 - [ ] Review the Supabase backup/restore plan and complete the restore drill described in `TESTING.md` before launch.

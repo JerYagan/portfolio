@@ -5,7 +5,7 @@ export async function replaceAssociations(
   entryId: string,
   tagNames?: string[],
   tagIds?: string[],
-  media?: Array<{ object_path: string; alt_text: string; caption?: string | null; media_role: 'presentation_board' | 'logo_variation' | 'supporting_image'; sort_order: number }>,
+  media?: Array<{ object_path: string; alt_text: string; caption?: string | null; media_role: 'presentation_board' | 'logo_variation' | 'supporting_image' | 'page_screenshot'; page_name?: string | null; device_label?: 'desktop' | 'tablet' | 'mobile' | null; sort_order: number }>,
 ) {
   if (tagNames !== undefined || tagIds !== undefined) {
     const resolved = tagIds ?? await resolveTagNames(client, tagNames ?? []);
@@ -21,7 +21,15 @@ export async function replaceAssociations(
     const { error: deleteError } = await client.from('portfolio_media').delete().eq('entry_id', entryId);
     if (deleteError) return 'database';
     if (media.length) {
-      const { error } = await client.from('portfolio_media').insert(media.map((item) => ({ ...item, entry_id: entryId, caption: item.caption ?? null })));
+      const { error } = await client.from('portfolio_media').insert(media.map((item) => {
+        const { page_name, device_label, ...base } = item;
+        return {
+          ...base,
+          entry_id: entryId,
+          caption: item.caption ?? null,
+          ...(item.media_role === 'page_screenshot' ? { page_name, device_label } : {}),
+        };
+      }));
       if (error) return error.code === '23503' || error.code === '23505' ? 'invalid' : 'database';
     }
   }

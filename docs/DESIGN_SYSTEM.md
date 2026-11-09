@@ -59,12 +59,15 @@ Always verify text contrast for actual pairings; do not assume an accent works f
 - **Project card**: thumbnail, category label, title, concise summary, completion month/year when available or optional year as a fallback; whole-card link with a visible focus state.
 - **Profile landing**: portrait or calm placeholder, owner-written introduction, contact/social paths, technology marks grouped by tools in use and tools being learned, featured work, and up to eight latest published entries.
 - **Category filter**: clear selected state and a usable mobile layout.
-- **Project detail header**: category, title, summary, completion date/year and other optional metadata; external link shown only when supplied.
+- **Project detail header**: category, title, summary, completion date/year, optional completed/in-progress project status, and other optional metadata; external link shown only when supplied.
+- **Website pages**: labeled screenshot previews show the page name and desktop/tablet/mobile capture size. Activating one opens an image-only full-screen dialog with vertical scrolling, a persistent close control, optional previous/next actions, focus containment, Escape handling, and a dark blurred backdrop.
+- **Case-study sections**: retain the short summary as the project introduction. Render optional completed sections in their saved order with restrained serif headings and safe Markdown; omit unfinished sections.
 - **Project tools**: distinguish selected catalog tools from free-form project tags. Show selected tools in the detail sidebar with their local brand-color marks and readable names; omit either group when empty.
-- **Logofolio detail**: use the entry's presentation setting and explicit media roles, not category-name matching or first-image order. Show the optional presentation board at full content width, then selected tools, then separate full-ratio masonry galleries for logo variations and supporting images.
+- **Logofolio detail**: use the entry's presentation setting and explicit media roles, not category-name matching or first-image order. Show the optional presentation board at full content width, then the logo-variation and supporting-image masonry galleries, followed by one compact project-information panel. Combine metadata and tools with the project narrative in a balanced responsive layout.
 - **Gallery**: a staggered, responsive masonry layout that preserves full image content and intrinsic aspect ratios. Each image opens alone in an accessible modal with a plain close icon; clicking outside the image or pressing Escape closes it. The page behind the modal is darkened and blurred.
 - **Admin shell**: persistent side navigation on desktop, compact menu on mobile, clear page title and action placement.
 - **Form controls**: labels, hint/error text, required indicators, pending/success/error states.
+- **Case-study editor**: optional ordered fieldsets with a heading input suggesting Context, Approach, Outcome, and Reflection, Markdown body, keyboard-operable move buttons, and a named remove action.
 - **Confirm dialog**: deletion title names the object and explains the irreversible action; keyboard focus remains managed.
 - **Empty state**: simple explanation and relevant action for admin; calm browse suggestion for public.
 

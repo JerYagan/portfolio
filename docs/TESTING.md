@@ -104,3 +104,41 @@ Report the exact commands run and their outcomes. Distinguish unit, database/RLS
 - Migration `20261108030000_portfolio_media_roles.sql` was added to the repository but was not applied to the configured Supabase project. The existing first-image convention is used for reads until migration; gallery writes require the migration and return `503 MIGRATION_REQUIRED`.
 - No portfolio content or database rows were modified.
 
+## 2026-11-08 reusable case-study sections
+
+- Pinned Node.js `24.22.2` typecheck passed: `npm exec --yes --package=node@24.22.2 -- node node_modules/typescript/bin/tsc --noEmit`.
+- Pinned Node.js `24.22.2` production build passed: `npm exec --yes --package=node@24.22.2 -- node node_modules/next/dist/bin/next build`.
+- Read-only HTTP checks on the local server returned `200` for the home page and the existing `fresh-eats` detail API. The response includes an empty `case_study_sections` array while the additive column is absent, preserving existing project behavior.
+- The additive migration `20261108040000_case_study_sections.sql` has not been applied to Supabase. Compatibility preserves public rendering and entry edits with no sections until migration; saving non-empty sections returns `503 MIGRATION_REQUIRED` before the schema is ready.
+- No database or portfolio content was changed. Browser persistence/order checks remain pending a development database with the migration applied.
+
+## 2026-11-08 logofolio information layout
+
+- Pinned Node.js `24.22.2` typecheck passed: `npm exec --yes --package=node@24.22.2 -- node node_modules/typescript/bin/tsc --noEmit`.
+- Pinned Node.js `24.22.2` production build passed: `npm exec --yes --package=node@24.22.2 -- node node_modules/next/dist/bin/next build`.
+- Browser review of the existing logofolio at desktop width confirmed both image galleries precede the grouped project information, metadata, tools, and tags.
+- Mobile viewport review is pending. No database or portfolio content was changed.
+
+
+## 2026-11-08 page title suffix
+
+- Removed the root metadata title template that appended “— Portfolio” to route titles. Route-specific titles remain sourced from each page; the root fallback remains “Portfolio”.
+- Pinned Node.js 24.22.2 typecheck passed: `npm exec --yes --package=node@24.22.2 -- node node_modules/typescript/bin/tsc --noEmit`.
+- Pinned Node.js 24.22.2 production build passed: `npm exec --yes --package=node@24.22.2 -- node node_modules/next/dist/bin/next build`.
+
+## 2026-11-08 project progress and demo seed
+
+- Pinned Node.js 24.22.2 typecheck passed: `npm exec --yes --package=node@24.22.2 -- node node_modules/typescript/bin/tsc --noEmit`.
+- Pinned Node.js 24.22.2 production build passed: `npm exec --yes --package=node@24.22.2 -- node node_modules/next/dist/bin/next build`.
+- On the configured schema before the project-status migration, read-only public list and project-detail API requests returned `200`; the new status field was `null`, preserving unknown legacy progress instead of guessing.
+- The demo website seed is intentionally not run against the configured database. Apply the migration and seed only in a local/development project, then verify the entry remains a draft, its progress selector saves, and the public detail shows the selected progress after publishing a non-demo entry.
+
+## Full-page website screenshots
+
+- Pinned Node.js 24.22.2 typecheck passed: `npm exec --yes --package=node@24.22.2 -- node node_modules/typescript/bin/tsc --noEmit`.
+- Pinned Node.js 24.22.2 production build passed: `npm exec --yes --package=node@24.22.2 -- node node_modules/next/dist/bin/next build`.
+- Read-only `GET /api/portfolio/entries/demo-studio-website` returned `200` with its four existing gallery images. None are assigned the new page-screenshot role yet.
+- Verify CMS uploads with page name and each device label persist and remain editable; standard gallery uploads should continue to work without the migration until screenshot media is selected.
+- Verify a published entry renders screenshot previews separately from its regular gallery; open a very tall image and scroll to both ends on desktop and mobile.
+- Verify close button, click outside the image, Escape, focus restoration, and previous/next controls; confirm no iframe or browser chrome is rendered and reduced-motion preferences are respected.
+- Migration `20261108060000_website_page_screenshots.sql` has not been applied to Supabase. No gallery upload or database write was performed for this change.

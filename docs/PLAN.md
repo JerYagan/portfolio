@@ -185,3 +185,48 @@ The local dev server was restarted after the production build. No entry content 
 - [x] Verify the homepage and configured favicon/manifest URLs return HTTP 200 with expected icon metadata.
 - [ ] Verify the role selector and role-local reordering in the browser after applying the media-role migration.
 
+## 2026-11-08 reusable case-study sections
+
+- [x] Add a `case_study_sections` JSONB field with an additive migration, a 12-section database limit, and compatibility for existing entries.
+- [x] Validate section headings and Markdown body lengths on admin create/update requests; reject oversized arrays and unknown fields.
+- [x] Add CMS controls for suggested/custom headings, Markdown body editing, adding, removing, and reordering sections.
+- [x] Render only completed sections in public and private-preview project details using safe Markdown.
+- [x] Update API, data-model, architecture, security, design, product, decision, improvement, and testing documentation.
+- [ ] Apply the migration to Supabase and verify persistence, ordering, and public draft exclusion on a non-production entry.
+- [x] Run pinned Node.js `24.22.2` typecheck and production build.
+- [x] Verify homepage and existing public detail/API remain available without the new column.
+- [ ] Verify section editing, ordering, and rendering for standard and logofolio entries in a browser after applying the migration.
+
+## 2026-11-08 logofolio information layout
+
+- [x] Move logo-variation and supporting-image galleries ahead of project information.
+- [x] Combine logofolio metadata, narrative, case-study sections, tools, and tags into a compact responsive information block.
+- [x] Keep standard project detail order and layout unchanged.
+- [x] Verify content order and grouped project information on the logofolio page at desktop width.
+- [ ] Review the compact info panel at mobile width.
+
+
+## Shared page titles
+
+- [x] Remove the root title template that appended ‘— Portfolio’ to route-specific page titles.
+
+## Project progress and demo website seed
+
+- [x] Add nullable completed/in-progress project progress separately from draft/published status.
+- [x] Add the admin selector and render the selected progress on public and private project detail pages.
+- [x] Keep legacy entries unset and tolerate reads before the additive migration; block saves that need the new field until migration.
+- [x] Add an explicit idempotent draft-only demo website seed, separate from the automatic seed.
+- [x] Update data model, API, product, security, design, and decision documentation.
+- [x] Pass the pinned Node.js 24.22.2 typecheck and production build.
+- [ ] Apply `20261108050000_entry_project_status.sql` and optionally run `supabase/seed_demo_website.sql` only in a local/development database.
+
+## Full-page website screenshot showcase
+
+- [x] Add a dedicated website-page screenshot media role with validated page and device labels.
+- [x] Add CMS controls to assign screenshot role, page name, and desktop/tablet/mobile size.
+- [x] Separate screenshots from ordinary galleries and render labeled previews in a dedicated Website pages section.
+- [x] Add a full-screen image-only viewer with vertical scrolling, close/outside-click handling, Escape and keyboard navigation.
+- [x] Add schema migration and maintain read compatibility before it is applied.
+- [x] Pass the pinned Node.js 24.22.2 typecheck and production build.
+- [ ] Apply `20261108060000_website_page_screenshots.sql` to the intended development database before saving screenshots.
+

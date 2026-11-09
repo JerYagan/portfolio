@@ -21,10 +21,7 @@ export const metadata: Metadata = {
     apple: '/images/favicon_io/apple-touch-icon.png',
   },
   manifest: '/images/favicon_io/site.webmanifest',
-  title: {
-    default: 'Portfolio',
-    template: '%s — Portfolio',
-  },
+  title: 'Portfolio',
   description: 'A personal portfolio of websites, graphic design, drawings, and digital systems.',
 };
 

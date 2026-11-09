@@ -4,7 +4,7 @@ import { readJsonBody } from '@/lib/http/admin-request';
 import { revalidatePortfolio } from '@/lib/http/revalidate-portfolio';
 import { createEntrySchema, adminEntryListQuerySchema } from '@/lib/validation/admin';
 import { replaceAssociations } from '@/lib/data/admin-entries';
-import { isMissingCompletionDateColumn, isMissingPresentationColumn, isMissingMediaRoleColumn } from '@/lib/data/completion-date';
+import { isMissingCompletionDateColumn, isMissingPresentationColumn, isMissingMediaRoleColumn, isMissingCaseStudySectionsColumn, isMissingProjectStatusColumn, isMissingWebsitePageMediaColumn } from '@/lib/data/completion-date';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,10 +46,24 @@ export async function POST(request: Request) {
   if ('response' in parsed) return parsed.response;
 
   const values = parsed.data;
+  const projectStatusColumn = await auth.client.from('portfolio_entries').select('project_status').limit(0);
+  if (isMissingProjectStatusColumn(projectStatusColumn.error)) return adminError('MIGRATION_REQUIRED', 'Apply the project progress migration before saving project progress.', 503);
+  if (projectStatusColumn.error) return adminFailure();
   if (values.media?.length) {
     const roleColumn = await auth.client.from('portfolio_media').select('media_role').limit(0);
     if (isMissingMediaRoleColumn(roleColumn.error)) return adminError('MIGRATION_REQUIRED', 'Apply the portfolio media roles migration before saving gallery images.', 503);
     if (roleColumn.error) return adminFailure();
+    if (values.media.some((item) => item.media_role === 'page_screenshot')) {
+      const pageMediaColumns = await auth.client.from('portfolio_media').select('page_name,device_label').limit(0);
+      if (isMissingWebsitePageMediaColumn(pageMediaColumns.error)) return adminError('MIGRATION_REQUIRED', 'Apply the website page screenshots migration before adding website screenshots.', 503);
+      if (pageMediaColumns.error) return adminFailure();
+    }
+  }
+  const caseStudySections = values.case_study_sections ?? [];
+  if (caseStudySections.length) {
+    const sectionsColumn = await auth.client.from('portfolio_entries').select('case_study_sections').limit(0);
+    if (isMissingCaseStudySectionsColumn(sectionsColumn.error)) return adminError('MIGRATION_REQUIRED', 'Apply the case-study sections migration before saving sections.', 503);
+    if (sectionsColumn.error) return adminFailure();
   }
   const presentationColumn = await auth.client.from('portfolio_entries').select('presentation').limit(0);
   const presentationColumnMissing = isMissingPresentationColumn(presentationColumn.error);
@@ -70,6 +84,7 @@ export async function POST(request: Request) {
     summary: values.summary,
     ...(!presentationColumnMissing ? { presentation: values.presentation ?? 'standard' } : {}),
     body_markdown: values.body_markdown ?? '',
+    ...(caseStudySections.length ? { case_study_sections: caseStudySections } : {}),
     category_id: values.category_id,
     thumbnail_path: values.thumbnail_path ?? null,
     thumbnail_alt: values.thumbnail_path ? values.thumbnail_alt?.trim() ?? null : null,
@@ -77,6 +92,7 @@ export async function POST(request: Request) {
     repository_url: values.repository_url ?? null,
     year: values.year ?? null,
     ...(values.completed_on ? { completed_on: values.completed_on } : {}),
+    project_status: values.project_status ?? 'in_progress',
     client_label: values.client_label ?? null,
     role: values.role ?? null,
     status: values.status ?? 'draft',

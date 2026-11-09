@@ -129,3 +129,27 @@ Short records of durable choices. Add newest decisions at the top.
 - **Reason:** The lead board should not change when the owner reorders or adds gallery images; supporting imagery needs to coexist with logo marks without being treated as a logo variation.
 - **Trade-off:** Existing installations must apply the additive media-role migration before saving gallery edits; public/editor reads retain a legacy fallback until then.
 
+## 2026-11-08 — Store optional case-study sections on the entry
+
+- **Decision:** Store up to 12 ordered `{ heading, body_markdown }` sections in a `case_study_sections` JSONB column on `portfolio_entries`, with server validation and a database array/count constraint.
+- **Reason:** Sections are an ordered part of one project story. Persisting them with the entry keeps edits atomic and uses the existing entry RLS boundary without another table or category-specific templates.
+- **Trade-off:** Per-section content limits are enforced at the API boundary; existing schemas need the additive migration before saving non-empty sections.
+
+## 2026-11-08 — Place logofolio galleries before project information
+
+- **Decision:** Order logofolio detail content as presentation board, image galleries, then one compact project-information panel combining project narrative, metadata, tools, and tags.
+- **Reason:** Logo artwork should lead the page, and consolidating sparse project facts and tools avoids a large, mostly empty details region.
+- **Trade-off:** Completion date, role, and client move from the title header into the information panel for logofolio entries; standard project pages keep their existing layout.
+
+## 2026-11-08 — Keep project progress separate from publication status
+
+- **Decision:** Store nullable `project_status` as `in_progress` or `completed`, expose it in project details, and default new CMS entries to `in_progress`. Keep existing rows unset until the owner chooses their progress. Use a separate manual, draft-only seed for optional demo website content.
+- **Reason:** Draft/published controls whether work is visible; completed/in-progress describes the work itself. Keeping these values separate avoids conflating publication with project facts and avoids guessing status for existing work.
+- **Trade-off:** The new migration must be applied before CMS creates can save, and the optional demo seed must be run manually in a development database.
+
+## 2026-11-08 — Store labeled full-page website captures as media
+
+- **Decision:** Extend portfolio media with a `page_screenshot` role, a required page name, and a `desktop|tablet|mobile` capture label. Show these separately from the project gallery and open each in a scrollable, image-only full-screen viewer.
+- **Reason:** Full-page captures need labels and a reading surface that preserves their tall aspect ratio, while existing image galleries should remain focused on supporting visuals.
+- **Trade-off:** The additive screenshot migration must be applied before saving this media role; older entries and other media roles remain readable and editable before then.
+

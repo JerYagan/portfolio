@@ -36,6 +36,7 @@ export async function GET(request: Request) {
         thumbnail: entry.thumbnail,
         year: entry.year,
         completed_on: entry.completedOn,
+        project_status: entry.projectStatus,
         is_featured: entry.isFeatured,
         published_at: entry.publishedAt,
       })),

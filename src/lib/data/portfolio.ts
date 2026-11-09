@@ -2,7 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createPublicSupabaseClient } from '@/lib/supabase/public';
-import { isMissingCompletionDateColumn, isMissingPresentationColumn, isMissingMediaRoleColumn } from '@/lib/data/completion-date';
+import { isMissingCompletionDateColumn, isMissingPresentationColumn, isMissingMediaRoleColumn, isMissingCaseStudySectionsColumn, isMissingProjectStatusColumn, isMissingWebsitePageMediaColumn } from '@/lib/data/completion-date';
 import { normalizeStoredTechnologies, technologyOption, type TechnologyId, type TechnologyStatus } from '@/lib/tech-stack';
 
 const mediaBucket = 'portfolio-media';
@@ -41,7 +41,9 @@ type EntryRow = {
   repository_url: string | null;
   year: number | null;
   completed_on: string | null;
+  project_status?: 'in_progress' | 'completed' | null;
   presentation?: 'standard' | 'logofolio';
+  case_study_sections?: unknown;
   client_label: string | null;
   role: string | null;
   is_featured: boolean;
@@ -58,6 +60,8 @@ type MediaRow = {
   caption: string | null;
   sort_order: number;
   media_role?: PortfolioMediaRole;
+  page_name?: string | null;
+  device_label?: WebsiteScreenshotDevice | null;
 };
 
 type TagRow = {
@@ -74,8 +78,10 @@ export type PublicCategory = Pick<CategoryRow, 'id' | 'name' | 'slug' | 'descrip
 export type PublicCategoryWithCount = PublicCategory & { entry_count: number };
 export type PublicImage = { url: string; alt: string };
 export type PublicTag = TagRow;
-export type PortfolioMediaRole = 'presentation_board' | 'logo_variation' | 'supporting_image';
-export type PublicGalleryImage = PublicImage & { caption: string | null; sort_order: number; media_role: PortfolioMediaRole };
+export type PortfolioMediaRole = 'presentation_board' | 'logo_variation' | 'supporting_image' | 'page_screenshot';
+export type WebsiteScreenshotDevice = 'desktop' | 'tablet' | 'mobile';
+export type PublicGalleryImage = PublicImage & { caption: string | null; sort_order: number; media_role: PortfolioMediaRole; page_name: string | null; device_label: WebsiteScreenshotDevice | null };
+export type PublicCaseStudySection = { heading: string; bodyMarkdown: string };
 
 export type PublicProfile = {
   displayName: string;
@@ -97,6 +103,7 @@ export type PublicEntryPreview = {
   thumbnail: PublicImage | null;
   year: number | null;
   completedOn: string | null;
+  projectStatus: 'in_progress' | 'completed' | null;
   isFeatured: boolean;
   publishedAt: string | null;
   updatedAt: string;
@@ -105,6 +112,7 @@ export type PublicEntryPreview = {
 export type PublicEntry = PublicEntryPreview & {
   presentation: 'standard' | 'logofolio';
   bodyMarkdown: string;
+  caseStudySections: PublicCaseStudySection[];
   projectUrl: string | null;
   repositoryUrl: string | null;
   clientLabel: string | null;
@@ -145,6 +153,20 @@ function asRecords(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value)
     ? value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
     : [];
+}
+
+export function normalizeCaseStudySections(value: unknown): PublicCaseStudySection[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 12).flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const section = item as Record<string, unknown>;
+    if (typeof section.heading !== 'string' || typeof section.body_markdown !== 'string') return [];
+    const heading = section.heading.trim();
+    const bodyMarkdown = section.body_markdown;
+    return heading.length > 0 && heading.length <= 80 && bodyMarkdown.length <= 8000 && bodyMarkdown.trim().length > 0
+      ? [{ heading, bodyMarkdown }]
+      : [];
+  });
 }
 
 function parseSkills(value: unknown): ProfileSkill[] {
@@ -269,7 +291,7 @@ export async function getPublicCategoriesWithCounts(): Promise<PublicCategoryWit
 }
 
 const entryColumns =
-  'id,category_id,title,slug,summary,body_markdown,thumbnail_path,thumbnail_alt,project_url,repository_url,year,completed_on,presentation,client_label,role,is_featured,sort_order,seo_title,seo_description,published_at,updated_at';
+  'id,category_id,title,slug,summary,body_markdown,thumbnail_path,thumbnail_alt,project_url,repository_url,year,completed_on,project_status,presentation,client_label,role,is_featured,sort_order,seo_title,seo_description,published_at,updated_at';
 
 function toPreview(row: EntryRow, categoriesById: Map<string, PublicCategory>): PublicEntryPreview | null {
   const category = categoriesById.get(row.category_id);
@@ -284,6 +306,7 @@ function toPreview(row: EntryRow, categoriesById: Map<string, PublicCategory>): 
     thumbnail: null,
     year: row.year,
     completedOn: row.completed_on ?? null,
+    projectStatus: row.project_status ?? null,
     isFeatured: row.is_featured,
     publishedAt: row.published_at,
     updatedAt: row.updated_at,
@@ -343,16 +366,16 @@ export async function getPublishedEntries(options: {
   };
   let columns = entryColumns;
   let result = await fetchEntries(columns);
-  if (isMissingPresentationColumn(result.error)) {
-    columns = columns.replace(',presentation', '');
-    result = await fetchEntries(columns);
-  }
-  if (isMissingCompletionDateColumn(result.error)) {
-    columns = columns.replace('year,completed_on,', 'year,');
-    result = await fetchEntries(columns);
-  }
-  if (isMissingPresentationColumn(result.error)) {
-    columns = columns.replace(',presentation', '');
+  for (let attempts = 0; attempts < 6; attempts += 1) {
+    if (isMissingPresentationColumn(result.error) && columns.includes(',presentation')) {
+      columns = columns.replace(',presentation', '');
+    } else if (isMissingCompletionDateColumn(result.error) && columns.includes(',completed_on,')) {
+      columns = columns.replace('year,completed_on,', 'year,');
+    } else if (isMissingProjectStatusColumn(result.error) && columns.includes(',project_status')) {
+      columns = columns.replace(',project_status', '');
+    } else {
+      break;
+    }
     result = await fetchEntries(columns);
   }
   const { data, count, error } = result;
@@ -383,18 +406,20 @@ export async function getPublishedEntryBySlug(slug: string): Promise<PublicEntry
     .eq('status', 'published')
     .in('category_id', categoryIds)
     .maybeSingle();
-  let columns = entryColumns;
+  let columns = `${entryColumns},case_study_sections`;
   let result = await fetchEntry(columns);
-  if (isMissingPresentationColumn(result.error)) {
-    columns = columns.replace(',presentation', '');
-    result = await fetchEntry(columns);
-  }
-  if (isMissingCompletionDateColumn(result.error)) {
-    columns = columns.replace('year,completed_on,', 'year,');
-    result = await fetchEntry(columns);
-  }
-  if (isMissingPresentationColumn(result.error)) {
-    columns = columns.replace(',presentation', '');
+  for (let attempts = 0; attempts < 6; attempts += 1) {
+    if (isMissingPresentationColumn(result.error) && columns.includes(',presentation')) {
+      columns = columns.replace(',presentation', '');
+    } else if (isMissingCaseStudySectionsColumn(result.error) && columns.includes(',case_study_sections')) {
+      columns = columns.replace(',case_study_sections', '');
+    } else if (isMissingCompletionDateColumn(result.error) && columns.includes(',completed_on,')) {
+      columns = columns.replace('year,completed_on,', 'year,');
+    } else if (isMissingProjectStatusColumn(result.error) && columns.includes(',project_status')) {
+      columns = columns.replace(',project_status', '');
+    } else {
+      break;
+    }
     result = await fetchEntry(columns);
   }
   const { data, error } = result;
@@ -409,7 +434,7 @@ export async function getPublishedEntryBySlug(slug: string): Promise<PublicEntry
     signImage(client, row.thumbnail_path, row.thumbnail_alt),
     client
       .from('portfolio_media')
-      .select('object_path,alt_text,caption,sort_order,media_role')
+      .select('object_path,alt_text,caption,sort_order,media_role,page_name,device_label')
       .eq('entry_id', row.id)
       .order('sort_order', { ascending: true }),
     client.from('entry_tags').select('portfolio_tags(id,name,slug)').eq('entry_id', row.id),
@@ -417,7 +442,22 @@ export async function getPublishedEntryBySlug(slug: string): Promise<PublicEntry
   ensureNoError(tagsResult.error);
 
   let mediaRows: MediaRow[];
-  if (isMissingMediaRoleColumn(mediaResult.error)) {
+  if (isMissingWebsitePageMediaColumn(mediaResult.error)) {
+    const roleOnlyMedia = await client.from('portfolio_media').select('object_path,alt_text,caption,sort_order,media_role')
+      .eq('entry_id', row.id).order('sort_order', { ascending: true });
+    if (isMissingMediaRoleColumn(roleOnlyMedia.error)) {
+      const legacyMedia = await client.from('portfolio_media').select('object_path,alt_text,caption,sort_order')
+        .eq('entry_id', row.id).order('sort_order', { ascending: true });
+      ensureNoError(legacyMedia.error);
+      mediaRows = (legacyMedia.data ?? []).map((image, index) => ({
+        ...image,
+        media_role: row.presentation === 'logofolio' ? (index === 0 ? 'presentation_board' : 'logo_variation') : 'supporting_image',
+      })) as MediaRow[];
+    } else {
+      ensureNoError(roleOnlyMedia.error);
+      mediaRows = (roleOnlyMedia.data ?? []) as unknown as MediaRow[];
+    }
+  } else if (isMissingMediaRoleColumn(mediaResult.error)) {
     const legacyMedia = await client.from('portfolio_media').select('object_path,alt_text,caption,sort_order')
       .eq('entry_id', row.id).order('sort_order', { ascending: true });
     ensureNoError(legacyMedia.error);
@@ -431,7 +471,7 @@ export async function getPublishedEntryBySlug(slug: string): Promise<PublicEntry
   }
   const media = await Promise.all(mediaRows.map(async (image) => {
     const signedImage = await signImage(client, image.object_path, image.alt_text);
-    return signedImage ? { ...signedImage, caption: image.caption, sort_order: image.sort_order, media_role: image.media_role ?? 'supporting_image' } : null;
+    return signedImage ? { ...signedImage, caption: image.caption, sort_order: image.sort_order, media_role: image.media_role ?? 'supporting_image', page_name: image.page_name ?? null, device_label: image.device_label ?? null } : null;
   }));
   const tagRows = (tagsResult.data ?? []) as unknown as EntryTagRow[];
   const tags = tagRows.flatMap((row) => {
@@ -443,6 +483,7 @@ export async function getPublishedEntryBySlug(slug: string): Promise<PublicEntry
     ...preview,
     thumbnail,
     bodyMarkdown: row.body_markdown,
+    caseStudySections: normalizeCaseStudySections(row.case_study_sections),
     projectUrl: safeUrl(row.project_url),
     repositoryUrl: safeUrl(row.repository_url),
     clientLabel: row.client_label,

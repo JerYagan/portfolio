@@ -48,9 +48,18 @@ const galleryItemSchema = z.object({
   object_path: objectPath,
   alt_text: z.string().trim().min(1).max(300),
   caption: z.string().max(300).nullable().optional(),
-  media_role: z.enum(['presentation_board', 'logo_variation', 'supporting_image']).default('supporting_image'),
+  media_role: z.enum(['presentation_board', 'logo_variation', 'supporting_image', 'page_screenshot']).default('supporting_image'),
+  page_name: z.string().trim().min(1).max(80).nullable().optional(),
+  device_label: z.enum(['desktop', 'tablet', 'mobile']).nullable().optional(),
   sort_order: z.number().int().min(-100000).max(100000),
-}).strict();
+}).strict().superRefine((value, context) => {
+  if (value.media_role === 'page_screenshot') {
+    if (!value.page_name?.trim()) context.addIssue({ code: 'custom', path: ['page_name'], message: 'Enter the page name for this screenshot.' });
+    if (!value.device_label) context.addIssue({ code: 'custom', path: ['device_label'], message: 'Choose the device size for this screenshot.' });
+  } else if (value.page_name || value.device_label) {
+    context.addIssue({ code: 'custom', path: ['media_role'], message: 'Page and device labels are only used for website screenshots.' });
+  }
+});
 
 const tagNamesSchema = z.array(z.string().trim().min(1).max(40)).max(20).refine(
   (values) => new Set(values.map((value) => value.toLocaleLowerCase())).size === values.length,
@@ -58,6 +67,10 @@ const tagNamesSchema = z.array(z.string().trim().min(1).max(40)).max(20).refine(
 );
 
 const tagIdsSchema = z.array(uuidSchema).max(20).refine((values) => new Set(values).size === values.length);
+const caseStudySectionsSchema = z.array(z.object({
+  heading: z.string().trim().min(1).max(80),
+  body_markdown: z.string().max(8000),
+}).strict()).max(12);
 
 const entryFields = {
   title: z.string().trim().min(1).max(120),
@@ -65,6 +78,7 @@ const entryFields = {
   summary: z.string().trim().min(1).max(240),
   presentation: z.enum(['standard', 'logofolio']),
   body_markdown: z.string().max(30000),
+  case_study_sections: caseStudySectionsSchema,
   category_id: uuidSchema,
   thumbnail_path: objectPath.nullable(),
   thumbnail_alt: z.string().trim().min(1).max(300).nullable(),
@@ -72,6 +86,7 @@ const entryFields = {
   repository_url: safeHttpsUrl.nullable(),
   year: z.number().int().min(1900).max(2100).nullable(),
   completed_on: completionDate,
+  project_status: z.enum(['in_progress', 'completed']).nullable(),
   client_label: z.string().trim().max(120).nullable(),
   role: z.string().trim().max(120).nullable(),
   status: z.enum(['draft', 'published']),
@@ -96,6 +111,7 @@ export const createEntrySchema = z.object({
   summary: entryFields.summary,
   presentation: entryFields.presentation.optional(),
   body_markdown: entryFields.body_markdown.optional(),
+  case_study_sections: entryFields.case_study_sections.optional(),
   category_id: entryFields.category_id,
   thumbnail_path: entryFields.thumbnail_path.optional(),
   thumbnail_alt: entryFields.thumbnail_alt.optional(),
@@ -103,6 +119,7 @@ export const createEntrySchema = z.object({
   repository_url: entryFields.repository_url.optional(),
   year: entryFields.year.optional(),
   completed_on: entryFields.completed_on.optional(),
+  project_status: entryFields.project_status.optional(),
   client_label: entryFields.client_label.optional(),
   role: entryFields.role.optional(),
   status: entryFields.status.optional(),

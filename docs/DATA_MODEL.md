@@ -66,12 +66,14 @@ Category names are data, not an enum. Entries reference category IDs. A category
 | `summary` | `text` | Not null, 1–240 characters |
 | `presentation` | `text` | Not null, default `standard`, check in (`standard`, `logofolio`); chooses a reusable entry layout independently of the category name |
 | `body_markdown` | `text` | Not null, default empty, max 30,000 characters; render safely, never allow raw HTML |
+| `case_study_sections` | `jsonb` | Not null, default `[]`; ordered array of `{ heading, body_markdown }`, maximum 12 sections; API limits headings to 80 and each body to 8,000 characters |
 | `thumbnail_path` | `text` | Nullable Storage object path under `portfolio/` |
 | `thumbnail_alt` | `text` | Must be non-empty when a thumbnail path is set |
 | `project_url` | `text` | Nullable, database and API accept `https:` only |
 | `repository_url` | `text` | Nullable, database and API accept `https:` only |
 | `year` | `smallint` | Nullable; database range 1900–2100, API may use a narrower practical range |
 | `completed_on` | `date` | Nullable; exact calendar date the project was completed. API accepts years 1900–2100. When supplied it takes precedence over `year` in public display. |
+| `project_status` | `text` | Nullable; check in (`in_progress`, `completed`). Describes the work progress, independently of the publication `status`. Existing rows stay unset until the owner selects a value. New CMS entries default to `in_progress`. |
 | `client_label` | `text` | Nullable, max 120 characters; public only when supplied intentionally |
 | `role` | `text` | Nullable, max 120 characters |
 | `status` | `text` | Not null, check in (`draft`, `published`), default `draft`; published entry requires `published_at` |
@@ -91,13 +93,17 @@ Category names are data, not an enum. Entries reference category IDs. A category
 | `object_path` | `text` | Not null, unique Storage path under `portfolio/`, max 512 characters |
 | `alt_text` | `text` | Not null, trimmed length 1–300 characters |
 | `caption` | `text` | Nullable, max 300 characters |
-| `media_role` | `text` | Not null, defaults to `supporting_image`; one of `presentation_board`, `logo_variation`, `supporting_image` |
+| `media_role` | `text` | Not null, defaults to `supporting_image`; one of `presentation_board`, `logo_variation`, `supporting_image`, `page_screenshot` |
+| `page_name` | `text` | Nullable; required for `page_screenshot`, trimmed length 1–80 characters; identifies the website page, such as Home or Contact |
+| `device_label` | `text` | Nullable; required for `page_screenshot`, one of `desktop`, `tablet`, `mobile` |
 | `sort_order` | `integer` | Not null, default `0` |
 | `created_at` | `timestamptz` | Not null, default `now()` |
 
 Images only in v1. The thumbnail may also appear in the gallery, but the gallery ordering is stored independently. Use object paths, not public URLs, so the URL can be derived from configured storage.
 
 For `logofolio` presentation, exactly zero or one `presentation_board` media item is rendered full-width before the tools section. `logo_variation` items render in the logo gallery and `supporting_image` items render in a separate supporting gallery; each gallery preserves image ratios and role-local `sort_order`. A partial unique index allows at most one presentation board per entry. The entry thumbnail remains the archive-card preview. The additive migration backfills existing logofolios by marking their first ordered image as the board and later images as logo variations, preserving the current appearance.
+
+`page_screenshot` media items are shown in a dedicated Website pages section. Each requires a page name and device label; the full-page image is opened in a scrollable, image-only viewer. This role is independent of the entry's category so future disciplines can reuse it where appropriate.
 
 ### `portfolio_tags`
 
@@ -116,9 +122,12 @@ Composite primary key (`entry_id`, `tag_id`). Both are foreign keys with cascade
 - Unique indexes on category slug, entry slug, media object path, and tag slug/name (case-insensitive name index).
 - Index entries by `(status, is_featured desc, sort_order, published_at desc)`, `(category_id, status, sort_order)`, and non-null `thumbnail_path`.
 - Index media by `(entry_id, sort_order)` and entry_tags by `tag_id`; a partial unique index on `portfolio_media(entry_id)` where `media_role = 'presentation_board'` permits at most one board per entry.
+- `page_screenshot` media requires `page_name` and `device_label`; non-screenshot media must leave both fields null.
 - `updated_at` is updated by a database trigger for `profile`, `portfolio_categories`, and `portfolio_entries`.
 - Entry slug and category slug are normalized and validated in the application and constrained unique in SQL.
 - `completed_on` uses PostgreSQL `date`, with strict `YYYY-MM-DD` calendar validation at the API boundary.
+- `project_status` is nullable to avoid guessing the progress of existing work. When supplied, it is constrained to `in_progress` or `completed`; it is separate from the draft/published visibility status.
+- `case_study_sections` must be a JSON array with at most 12 elements; the API validates each heading/body pair. Keeping the ordered sections on the entry row makes edits atomic with the rest of the entry and inherits its RLS policy.
 - Public reads are limited with RLS to published entries, visible categories, and visible media belonging to published entries.
 
 ## Row Level Security
