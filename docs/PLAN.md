@@ -24,6 +24,12 @@ This checklist tracks implementation. Check an item only when the result exists 
 - [x] Keep each section stacked cleanly on mobile.
 - [ ] Verify final desktop/mobile layout in a browser.
 
+## 2026-11-09 — Category and contact supporting copy
+
+- [x] Place the category description directly below its heading on desktop and mobile.
+- [x] Place the contact invitation directly below its heading on desktop and mobile.
+- [x] Preserve the full-width category and contact card layouts.
+
 ## 2026-11-09 — Profile contacts, home sections, and toolkit controls
 
 - [x] Redesign the landing page category section as responsive descriptive cards.
