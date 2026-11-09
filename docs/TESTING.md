@@ -32,16 +32,17 @@ Never run destructive database checks against production data.
 
 Before production, exercise:
 
-1. Public home, about, category filter, list, and detail page with real content and with an empty database; confirm the landing page latest-work section renders at most eight published entries.
+1. Public home, category filter, list, and detail page with real content and with an empty database; confirm the landing page latest-work section renders at most eight published entries.
 2. Light/dark/system theme, persistence, and no unreadable flash during initial render.
-3. Signed-out admin redirect and direct request rejection.
-4. Owner creates a category and a draft entry, edits it, publishes it, sees it publicly, then unpublishes/deletes it.
-5. Image upload validation, gallery ordering, deletion cleanup, and descriptive alt text; confirm the staggered masonry preserves portrait/landscape image ratios and the modal opens, closes from outside the image or with Escape, and works with keyboard focus.
-6. Slug collision, missing required fields, URL rejection, and oversized file error states.
-7. Keyboard-only navigation, visible focus, mobile viewport, reduced-motion preference, mobile menu open/close behavior, and header scroll-direction behavior at mobile and desktop widths.
-8. Profile editor technology search, grouped selection/status changes across disciplines, technology mark rendering, featured and latest work on the profile landing page, and date formatting for projects with a completion date.
-9. Confirm a schema without `completed_on` still renders public work using its existing year field; setting a completion date should explain that the additive migration is required.
-10. Open an existing saved draft from the CMS preview link; verify the public detail layout, noindex/no-store headers, five-minute media URLs, and successful return-to-editor navigation. Open the same preview signed out and as a non-admin; verify no entry data is returned and public pages/APIs remain published-only.
+3. Landing profile: verify the About page and navigation item are absent, the supplied full name and compact role line render, each “See all” opens the complete tool group in a dialog, and the dialog closes with its close button, Escape, and outside click.
+4. Signed-out admin redirect and direct request rejection.
+5. Owner creates a category and a draft entry, edits it, publishes it, sees it publicly, then unpublishes/deletes it.
+6. Image upload validation, gallery ordering, deletion cleanup, and descriptive alt text; confirm the staggered masonry preserves portrait/landscape image ratios and the modal opens, closes from outside the image or with Escape, and works with keyboard focus.
+7. Slug collision, missing required fields, URL rejection, and oversized file error states.
+8. Keyboard-only navigation, visible focus, mobile viewport, reduced-motion preference, mobile menu open/close behavior, and header scroll-direction behavior at mobile and desktop widths.
+9. Profile editor technology search, grouped selection/status changes across disciplines, technology mark rendering, featured and latest work on the profile landing page, and date formatting for projects with a completion date.
+10. Confirm a schema without `completed_on` still renders public work using its existing year field; setting a completion date should explain that the additive migration is required.
+11. Open an existing saved draft from the CMS preview link; verify the public detail layout, noindex/no-store headers, five-minute media URLs, and successful return-to-editor navigation. Open the same preview signed out and as a non-admin; verify no entry data is returned and public pages/APIs remain published-only.
 
 ## Commands
 

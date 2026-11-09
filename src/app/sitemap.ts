@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [categories, entries] = await Promise.all([getPublicCategories(), getPublishedSitemapEntries()]);
-  const staticRoutes = ['', '/about', '/work'].map((path) => ({
+  const staticRoutes = ['', '/work'].map((path) => ({
     url: new URL(path, env.siteUrl).toString(),
   }));
   const categoryRoutes = categories.map((category) => ({

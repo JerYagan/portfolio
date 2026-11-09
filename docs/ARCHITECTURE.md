@@ -11,7 +11,6 @@ src/
   proxy.ts
   app/
     (public)/
-      about/page.tsx
       work/page.tsx
       work/category/[slug]/page.tsx
       work/[slug]/page.tsx

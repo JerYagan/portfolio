@@ -75,7 +75,6 @@ export function SiteHeader({ displayName = 'Your Name' }: { displayName?: string
 
       <nav aria-label="Main navigation" className="site-nav" data-open={menuOpen ? 'true' : 'false'} id="site-navigation">
         <Link href="/work" onClick={closeMenu}>Work</Link>
-        <Link href="/about" onClick={closeMenu}>About</Link>
         <Link href="/#contact" onClick={closeMenu}>Contact</Link>
       </nav>
 

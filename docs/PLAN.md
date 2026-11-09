@@ -38,6 +38,17 @@ This checklist tracks implementation. Check an item only when the result exists 
 - [x] Limit public toolkit and learning groups to eight items by default with a “See all” / “Show less” control.
 - [ ] Verify profile editing, links, responsive cards, and toolkit expansion in a browser.
 
+## 2026-11-09 — Landing page simplification
+
+- [x] Remove the About navigation link and `/about` page; remove the route from the sitemap.
+- [x] Restore the “Hi, I’m Jerwin” landing heading and style the name with the theme accent; keep the role line smaller and close to the heading.
+- [x] Change the toolkit and learning-list “See all” controls to open accessible dialogs with all tools in that group.
+- [ ] Verify modal open/close behavior, heading, role line, and removed About route in a browser.
+
+## 2026-11-09 — Landing name scale
+
+- [x] Reduce the responsive display size of the landing-page name for desktop and mobile.
+
 ## 2026-11-09 — Pinterest-style project gallery
 
 - [x] Balance images into explicit full-width columns by estimated loaded height.

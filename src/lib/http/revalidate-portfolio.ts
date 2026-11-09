@@ -4,7 +4,6 @@ export function revalidatePortfolio(options: { entrySlug?: string; categorySlug?
   revalidatePath('/', 'page');
   revalidatePath('/work', 'page');
   revalidatePath('/work/category/[slug]', 'page');
-  revalidatePath('/about', 'page');
   revalidatePath('/sitemap.xml');
   revalidatePath('/api/portfolio/profile');
   revalidatePath('/api/portfolio/categories');

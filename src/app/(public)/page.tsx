@@ -34,12 +34,12 @@ export default async function HomePage() {
       <section aria-labelledby="profile-title" className="profile-page page-frame">
         <div className="profile-page__portrait"><PortfolioImage className="profile-page__image" eager image={profile.avatar} /></div>
         <div className="profile-page__copy">
-          <h1 id="profile-title">Hi, I’m <em>{profile.displayName}.</em></h1>
+          <h1 id="profile-title">Hi, I’m <em>Jerwin</em></h1>
           {profile.headline ? <p className="profile-page__headline">{profile.headline}</p> : null}
           <p className="profile-page__bio">{intro}</p>
           {profile.location ? <p className="profile-page__location">Based in {profile.location}</p> : null}
           <div className="profile-page__actions">
-            {profile.contactUrl ? <a className="button button--primary" href={profile.contactUrl}>Say hello <span aria-hidden="true">↗</span></a> : <Link className="button button--primary" href="/about">More about me <span aria-hidden="true">↗</span></Link>}
+            {profile.contactUrl ? <a className="button button--primary" href={profile.contactUrl}>Say hello <span aria-hidden="true">↗</span></a> : <Link className="button button--primary" href="/#contact">Say hello <span aria-hidden="true">↗</span></Link>}
             <Link className="text-link" href="/work">Browse the work <span aria-hidden="true">↘</span></Link>
           </div>
           {profile.socialLinks.length > 0 ? <ul aria-label="Social links" className="profile-page__socials">{profile.socialLinks.map((link) => <li key={`${link.label}-${link.url}`}><a href={link.url} rel={link.url.startsWith('mailto:') ? undefined : 'noreferrer noopener'} target={link.url.startsWith('mailto:') ? undefined : '_blank'}><SocialLinkMark label={link.label} url={link.url} /><span>{link.label}</span></a></li>)}</ul> : null}

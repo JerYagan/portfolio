@@ -1979,9 +1979,9 @@ a:focus-visible {
 .profile-page__portrait { width: 100%; max-width: 320px; min-width: 0; aspect-ratio: 3 / 4; align-self: center; overflow: hidden; }
 .profile-page__image { display: block; width: 100%; height: 100%; aspect-ratio: 3 / 4; border: 1px solid var(--color-line); background: var(--color-surface); object-fit: cover; }
 .profile-page__portrait .image-placeholder { display: grid; width: 100%; height: 100%; aspect-ratio: 3 / 4; place-items: center; border: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-muted); font-family: var(--font-serif); font-size: 15px; font-style: italic; }
-.profile-page__copy h1 { margin: 22px 0 12px; font-family: var(--font-serif); font-size: clamp(48px, 7vw, 86px); font-weight: 400; letter-spacing: -0.065em; line-height: 0.98; }
+.profile-page__copy h1 { margin: 0 0 5px; font-family: var(--font-serif); font-size: clamp(44px, 6vw, 76px); font-weight: 400; letter-spacing: -0.065em; line-height: 0.98; }
 .profile-page__copy h1 em { color: var(--color-accent); font-weight: 400; }
-.profile-page__headline { margin: 0 0 10px; color: var(--color-text); font-family: var(--font-serif); font-size: 21px; font-style: italic; }
+.profile-page__headline { margin: 0 0 14px; color: var(--color-muted); font-family: var(--font-sans); font-size: 14px; line-height: 1.5; }
 .profile-page__bio { max-width: 540px; margin: 0; color: var(--color-muted); font-size: 16px; line-height: 1.8; }
 .profile-page__location { margin: 14px 0 0; color: var(--color-muted); font-size: 11px; }
 .profile-page__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; margin-top: 27px; }
@@ -2027,6 +2027,15 @@ a:focus-visible {
 .technology-list__toggle { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; border: 0; border-bottom: 1px solid var(--color-line); padding: 2px 0 4px; background: transparent; color: var(--color-text); cursor: pointer; font: inherit; font-size: 11px; }
 .technology-list__toggle:hover { border-color: var(--color-accent); color: var(--color-accent); }
 .technology-list__toggle:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+.technology-dialog { width: min(680px, calc(100vw - 32px)); max-width: none; max-height: min(78dvh, 760px); overflow: auto; margin: auto; border: 1px solid var(--color-line); padding: clamp(20px, 4vw, 32px); background: var(--color-bg); color: var(--color-text); }
+.technology-dialog::backdrop { background: rgb(10 10 9 / 62%); backdrop-filter: blur(5px); }
+.technology-dialog__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
+.technology-dialog__header .eyebrow { margin: 0 0 8px; }
+.technology-dialog__header h2 { margin: 0; font-family: var(--font-serif); font-size: clamp(28px, 5vw, 38px); font-weight: 400; letter-spacing: -0.045em; }
+.technology-dialog__close { display: grid; width: 38px; height: 38px; flex: 0 0 38px; place-items: center; border: 1px solid var(--color-line); background: transparent; color: var(--color-text); cursor: pointer; font: inherit; font-size: 24px; line-height: 1; }
+.technology-dialog__close:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.technology-dialog__close:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+.technology-dialog__list { gap: 9px; }
 
 .contact-section { display: grid; grid-template-columns: minmax(0, 1fr); align-items: stretch; gap: 26px; }
 .contact-section__intro { display: block; }
@@ -2091,7 +2100,7 @@ a:focus-visible {
 @media (max-width: 620px) {
   .profile-page { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-block: 56px 66px; }
   .profile-page__portrait { width: min(64%, 260px); margin-inline: auto; }
-  .profile-page__copy h1 { font-size: clamp(50px, 15vw, 76px); }
+  .profile-page__copy h1 { font-size: clamp(44px, 13vw, 68px); }
   .profile-page__toolkit { grid-column: auto; }
   .home-featured { padding-block: 54px 64px; }
   .home-featured .section-heading,
