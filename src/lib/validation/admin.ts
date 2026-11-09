@@ -6,7 +6,7 @@ const safeHttpsUrl = z.string().trim().url().refine((value) => {
   const parsed = new URL(value);
   return parsed.protocol === 'https:' && !parsed.username && !parsed.password;
 });
-const safeContactUrl = z.string().trim().refine((value) => {
+const safeContactUrl = z.string().trim().max(500).refine((value) => {
   try {
     const parsed = new URL(value);
     return (parsed.protocol === 'https:' && !parsed.username && !parsed.password) || (parsed.protocol === 'mailto:' && Boolean(parsed.pathname));
@@ -14,7 +14,8 @@ const safeContactUrl = z.string().trim().refine((value) => {
     return false;
   }
 });
-const objectPath = z.string().regex(/^portfolio\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png|webp|avif)$/i);
+const rasterObjectPath = z.string().regex(/^portfolio\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png|webp|avif)$/i);
+const objectPath = z.string().regex(/^portfolio\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png|webp|avif|pdf)$/i);
 const catalogTechnologyId = z.enum(TECHNOLOGY_OPTIONS.map((technology) => technology.id) as [string, ...string[]]);
 const completionDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
   const [year, month, day] = value.split('-').map(Number);
@@ -53,6 +54,9 @@ const galleryItemSchema = z.object({
   device_label: z.enum(['desktop', 'tablet', 'mobile']).nullable().optional(),
   sort_order: z.number().int().min(-100000).max(100000),
 }).strict().superRefine((value, context) => {
+  if (value.object_path.toLowerCase().endsWith('.pdf') && value.media_role !== 'presentation_board') {
+    context.addIssue({ code: 'custom', path: ['media_role'], message: 'PDF files can only be used as presentation boards.' });
+  }
   if (value.media_role === 'page_screenshot') {
     if (!value.page_name?.trim()) context.addIssue({ code: 'custom', path: ['page_name'], message: 'Enter the page name for this screenshot.' });
     if (!value.device_label) context.addIssue({ code: 'custom', path: ['device_label'], message: 'Choose the device size for this screenshot.' });
@@ -80,7 +84,7 @@ const entryFields = {
   body_markdown: z.string().max(30000),
   case_study_sections: caseStudySectionsSchema,
   category_id: uuidSchema,
-  thumbnail_path: objectPath.nullable(),
+  thumbnail_path: rasterObjectPath.nullable(),
   thumbnail_alt: z.string().trim().min(1).max(300).nullable(),
   project_url: safeHttpsUrl.nullable(),
   repository_url: safeHttpsUrl.nullable(),
@@ -113,7 +117,7 @@ export const createEntrySchema = z.object({
   body_markdown: entryFields.body_markdown.optional(),
   case_study_sections: entryFields.case_study_sections.optional(),
   category_id: entryFields.category_id,
-  thumbnail_path: entryFields.thumbnail_path.optional(),
+  thumbnail_path: rasterObjectPath.nullable().optional(),
   thumbnail_alt: entryFields.thumbnail_alt.optional(),
   project_url: entryFields.project_url.optional(),
   repository_url: entryFields.repository_url.optional(),
@@ -165,7 +169,7 @@ const legacySkillSchema = z.object({
 
 const socialLinkSchema = z.object({
   label: z.string().trim().min(1).max(40),
-  url: safeHttpsUrl,
+  url: safeContactUrl,
 }).strict();
 
 export const updateProfileSchema = z.object({
@@ -174,7 +178,7 @@ export const updateProfileSchema = z.object({
   bio: z.string().max(12000).optional(),
   location: z.string().trim().max(120).nullable().optional(),
   contact_url: safeContactUrl.nullable().optional(),
-  avatar_path: objectPath.nullable().optional(),
+  avatar_path: rasterObjectPath.nullable().optional(),
   avatar_alt: z.string().trim().min(1).max(300).nullable().optional(),
   skills: z.array(z.union([catalogSkillSchema, legacySkillSchema])).max(40).refine(
     (skills) => new Set(skills.map((skill) => 'id' in skill ? skill.id : skill.name.toLocaleLowerCase())).size === skills.length,
@@ -190,6 +194,12 @@ export const updateProfileSchema = z.object({
 );
 
 export const adminMediaPathSchema = z.object({ object_path: objectPath }).strict();
+
+export const adminMediaUploadTicketSchema = z.object({
+  file_size: z.number().int().min(1),
+  content_type: z.string().trim().min(1).max(100),
+  media_role: z.enum(['avatar', 'thumbnail', 'presentation_board', 'logo_variation', 'supporting_image', 'page_screenshot']),
+}).strict();
 
 export const adminEntryListQuerySchema = z.object({
   status: z.enum(['draft', 'published', 'all']).default('all'),

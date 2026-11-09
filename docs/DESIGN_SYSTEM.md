@@ -57,15 +57,20 @@ Always verify text contrast for actual pairings; do not assume an accent works f
 - **Brand mark**: use the supplied `/images/SVG/portfolio-logo.svg` in public and admin wordmarks. Browser, Apple, and installed-app icons use the matching files in `/images/favicon_io/`.
 - **Site header**: sticky owner wordmark/name, desktop links, accessible theme selector, and a mobile menu. Hide the header as the visitor scrolls down and reveal it on upward scrolling; always reveal it when focused.
 - **Project card**: thumbnail, category label, title, concise summary, completion month/year when available or optional year as a fallback; whole-card link with a visible focus state.
-- **Profile landing**: portrait or calm placeholder, owner-written introduction, contact/social paths, technology marks grouped by tools in use and tools being learned, featured work, and up to eight latest published entries.
+- **Profile landing**: a portrait or calm placeholder in a fixed 3:4 frame, owner-written introduction, contact/social paths, technology marks grouped by tools in use and tools being learned, featured work, and up to eight latest published entries. Show up to eight tools per group initially and provide an accessible “See all” / “Show less” toggle when the group is longer.
 - **Category filter**: clear selected state and a usable mobile layout.
+- **Home categories**: place the heading and short introduction across the top, then show database-driven category cards in a full-width three-column desktop grid that collapses for smaller screens. Preserve category order, optional descriptions, and clear link affordances.
+- **Home contact**: place the invitation across the top and the primary contact/social cards in a full-width row below. Use local brand marks for known platforms and simple inline marks for email or custom websites.
 - **Project detail header**: category, title, summary, completion date/year, optional completed/in-progress project status, and other optional metadata; external link shown only when supplied.
 - **Website pages**: labeled screenshot previews show the page name and desktop/tablet/mobile capture size. Activating one opens an image-only full-screen dialog with vertical scrolling, a persistent close control, optional previous/next actions, focus containment, Escape handling, and a dark blurred backdrop.
+- **Presentation boards**: allow one image or PDF board on any project presentation. Render the full board above the project gallery. PDFs render every page inline with PDF.js and retain a click-to-open full-viewport viewer with vertical document scrolling, a persistent close control, Escape handling, and a dark blurred backdrop. Do not expose the browser's native PDF toolbar.
+- **Project details**: long Markdown details initially show a readable excerpt and a “See more” control. Expanding reveals the full detail and changes the control to “Show less”; short descriptions omit the control.
 - **Case-study sections**: retain the short summary as the project introduction. Render optional completed sections in their saved order with restrained serif headings and safe Markdown; omit unfinished sections.
 - **Project tools**: distinguish selected catalog tools from free-form project tags. Show selected tools in the detail sidebar with their local brand-color marks and readable names; omit either group when empty.
 - **Logofolio detail**: use the entry's presentation setting and explicit media roles, not category-name matching or first-image order. Show the optional presentation board at full content width, then the logo-variation and supporting-image masonry galleries, followed by one compact project-information panel. Combine metadata and tools with the project narrative in a balanced responsive layout.
-- **Gallery**: a staggered, responsive masonry layout that preserves full image content and intrinsic aspect ratios. Each image opens alone in an accessible modal with a plain close icon; clicking outside the image or pressing Escape closes it. The page behind the modal is darkened and blurred.
+- **Gallery**: a full-width, staggered masonry layout with explicit responsive column containers that preserves full image content and intrinsic aspect ratios. Use four columns on desktop, three below 760px, and two on phones; balance each image into the currently shortest column. Keep gutters compact (10px on phones, 14px elsewhere), image corners softly rounded (9px), and gallery artwork free of borders and shadows. Each image opens alone in an accessible modal with a plain close icon; clicking outside the image or pressing Escape closes it. The page behind the modal is darkened and blurred. PDF presentation-board tiles open the full scrollable document viewer.
 - **Admin shell**: persistent side navigation on desktop, compact menu on mobile, clear page title and action placement.
+- **Profile contact editor**: keep the primary contact URL and allow up to 20 individually editable social/contact links. Offer Email, LinkedIn, Behance, GitHub, Dribbble, Instagram, YouTube, Website, and custom link options with visible marks.
 - **Form controls**: labels, hint/error text, required indicators, pending/success/error states.
 - **Case-study editor**: optional ordered fieldsets with a heading input suggesting Context, Approach, Outcome, and Reflection, Markdown body, keyboard-operable move buttons, and a named remove action.
 - **Confirm dialog**: deletion title names the object and explains the irreversible action; keyboard focus remains managed.
@@ -75,10 +80,11 @@ Always verify text contrast for actual pairings; do not assume an accent works f
 
 - Use the same paper/ink/rust tokens as the public site, with denser spacing and clear panel borders for longer editing tasks.
 - The desktop CMS uses a persistent left navigation rail; on narrow screens it becomes a horizontally scrollable row below the account header.
+- The profile portrait picker keeps its native file control inside the avatar column; long filenames may clip within the control but must not overlap neighboring fields.
 - Keep one clear page title, a visible primary action, and short status feedback near the related form or table.
 - Tables scroll horizontally on small screens. Entry editors stack the details and publishing panels when the viewport narrows.
 - Destructive actions use a named confirmation and become unavailable while a category still has entries.
-- Gallery images expose move-up and move-down buttons with explicit accessible names. Image alternative text is required before saving.
+- Gallery items expose move-up and move-down buttons with explicit accessible names. Alternative text is required for every image or PDF board before saving.
 - Pending upload and cleanup states remain visible until the owner resolves them.
 - Existing saved entries expose a **Preview saved version** link in the editor. The preview page reuses the public project layout and adds a restrained paper-surface notice with a return-to-editor link; at mobile widths the notice stacks vertically.
 

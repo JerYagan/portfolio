@@ -22,6 +22,8 @@ The Vercel Node selector exposes major versions, not an exact patch. Keep the re
 - [ ] Pick which repository branch Vercel should treat as production; do not assume the branch name.
 - [ ] Confirm the database migration `20261108010000_profile_tech_and_entry_completion.sql` is applied to the intended Supabase project before deploying this application version.
 - [ ] Apply all later pending schema migrations in timestamp order, including `20261108060000_website_page_screenshots.sql`, before saving full-page screenshot media.
+- [ ] Apply `20261109010000_increase_portfolio_image_limit.sql` and set Supabase Storage's hosted global file-size limit to at least 15 MiB before using larger uploads.
+- [ ] Apply `20261109020000_pdf_presentation_boards.sql` before using PDF presentation boards; verify the bucket allows `application/pdf`.
 - [ ] Decide whether a separate development Supabase project is available for Preview deployments. Do not point untrusted Preview branches at the production database.
 - [ ] Choose the production hostname and confirm who controls its DNS.
 - [ ] Review the Supabase backup/restore plan and complete the restore drill described in `TESTING.md` before launch.
@@ -63,6 +65,7 @@ In Supabase Auth → URL Configuration:
 - [ ] Light, dark, and system themes work at desktop and mobile widths, and reduced-motion preference removes entrance/transition movement.
 - [ ] Signed-out `/admin` redirects to login; anonymous admin APIs return `401` and `no-store`.
 - [ ] An authorized owner can create/update a draft and publish only after the Preview environment is confirmed to use the intended development database.
+- [ ] Confirm CMS images up to 15 MiB upload directly to Supabase Storage and are verified by the server; image bytes must not pass through a Vercel Function request body, which is limited to 4.5 MB. [Vercel Function limits](https://vercel.com/docs/functions/limitations)
 - [ ] Browser console, deployment logs, accessibility basics, public metadata, and image alternative text have been reviewed.
 
 Vercel creates a unique URL for each Preview deployment, which is useful for review before changing the production branch. [Preview environments](https://vercel.com/docs/deployments/environments)
@@ -70,6 +73,7 @@ Vercel creates a unique URL for each Preview deployment, which is useful for rev
 ## Production launch checklist
 
 - [ ] Confirm the Supabase migration and schema match the checked-in `DATA_MODEL.md`.
+- [ ] Confirm the hosted `portfolio-media` bucket limit is 15 MiB and Supabase's global Storage limit is at least 15 MiB.
 - [ ] Enter production variables in the Production environment and trigger a new deployment.
 - [ ] Assign the chosen domain to the production deployment and configure its requested DNS records.
 - [ ] Set Supabase Site URL and exact allowed production redirect URLs to the canonical HTTPS hostname.

@@ -4,6 +4,8 @@ import { CaseStudySections } from '@/components/public/CaseStudySections';
 import { SafeMarkdown } from '@/components/public/SafeMarkdown';
 import { ProjectGallery } from '@/components/public/ProjectGallery';
 import { WebsitePageScreenshots } from '@/components/public/WebsitePageScreenshots';
+import { PdfDocumentPages, PdfDocumentPreview } from '@/components/public/PdfDocumentPreview';
+import { ExpandableProjectDetails } from '@/components/public/ExpandableProjectDetails';
 import { TechnologyMark } from '@/components/public/TechnologyMark';
 import type { PublicEntry } from '@/lib/data/portfolio';
 import { technologyIdForLabel } from '@/lib/tech-stack';
@@ -18,11 +20,12 @@ export function ProjectDetail({ entry, preview = false }: { entry: PublicEntry; 
   ].filter((item): item is { label: string; value: string } => Boolean(item));
   const projectTools = entry.tags.filter((tag) => technologyIdForLabel(tag.name));
   const projectTags = entry.tags.filter((tag) => !technologyIdForLabel(tag.name));
-  const logofolioBoard = entry.presentation === 'logofolio' ? entry.media.find((image) => image.media_role === 'presentation_board') ?? null : null;
+  const presentationBoard = entry.media.find((image) => image.media_role === 'presentation_board') ?? null;
+  const logofolioBoard = entry.presentation === 'logofolio' ? presentationBoard : null;
   const logofolioLogos = entry.presentation === 'logofolio' ? entry.media.filter((image) => image.media_role === 'logo_variation') : [];
   const logofolioSupporting = entry.presentation === 'logofolio' ? entry.media.filter((image) => image.media_role === 'supporting_image') : [];
   const websiteScreenshots = entry.media.filter((image) => image.media_role === 'page_screenshot');
-  const standardGallery = entry.media.filter((image) => image.media_role !== 'page_screenshot');
+  const standardGallery = entry.media.filter((image) => image.media_role !== 'page_screenshot' && image.media_role !== 'presentation_board');
   const hasCaseStudySections = entry.caseStudySections.some((section) => section.heading.trim() && section.bodyMarkdown.trim());
   const hasLogofolioNarrative = Boolean(entry.bodyMarkdown.trim() || hasCaseStudySections);
   const hasLogofolioProjectInfo = hasLogofolioNarrative || metadata.length > 0 || entry.tags.length > 0;
@@ -52,8 +55,10 @@ export function ProjectDetail({ entry, preview = false }: { entry: PublicEntry; 
       {entry.presentation === 'logofolio' ? (
         <div className="logofolio-detail">
           {logofolioBoard ? <figure className="logofolio-board">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img alt={logofolioBoard.alt} src={logofolioBoard.url} />
+            {logofolioBoard.media_type === 'pdf' ? <PdfDocumentPages image={logofolioBoard} /> : <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img alt={logofolioBoard.alt} src={logofolioBoard.url} />
+            </>}
             {logofolioBoard.caption ? <figcaption>{logofolioBoard.caption}</figcaption> : null}
           </figure> : entry.thumbnail ? <div className="detail-cover"><PortfolioImage className="detail-cover__image" eager image={entry.thumbnail} /></div> : null}
 
@@ -74,8 +79,10 @@ export function ProjectDetail({ entry, preview = false }: { entry: PublicEntry; 
             {hasLogofolioNarrative ? <div className="logofolio-info__copy">
               <p className="eyebrow">Project notes</p>
               <h2>About this project</h2>
-              {entry.bodyMarkdown ? <div className="logofolio-description"><SafeMarkdown source={entry.bodyMarkdown} /></div> : null}
-              <CaseStudySections sections={entry.caseStudySections} />
+              <ExpandableProjectDetails>
+                {entry.bodyMarkdown ? <div className="logofolio-description"><SafeMarkdown source={entry.bodyMarkdown} /></div> : null}
+                <CaseStudySections sections={entry.caseStudySections} />
+              </ExpandableProjectDetails>
             </div> : null}
             {metadata.length > 0 || entry.tags.length > 0 ? <aside aria-label="Project information and tools" className="logofolio-info__aside">
               <p className="eyebrow">At a glance</p>
@@ -101,6 +108,13 @@ export function ProjectDetail({ entry, preview = false }: { entry: PublicEntry; 
         </div>
       ) : <>
         <div className="detail-cover"><PortfolioImage className="detail-cover__image" eager image={entry.thumbnail} /></div>
+        {presentationBoard ? <figure className="detail-presentation-board">
+          {presentationBoard.media_type === 'pdf' ? <PdfDocumentPages image={presentationBoard} /> : <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img alt={presentationBoard.alt} src={presentationBoard.url} />
+          </>}
+          {presentationBoard.caption ? <figcaption>{presentationBoard.caption}</figcaption> : null}
+        </figure> : null}
         <div className="detail-body">
           <aside className="detail-body__aside">
             <p className="eyebrow">Project notes</p>
@@ -119,8 +133,10 @@ export function ProjectDetail({ entry, preview = false }: { entry: PublicEntry; 
             {entry.tags.length === 0 ? <p className="muted-note">No tools or tags added.</p> : null}
           </aside>
           <section aria-label="Project details" className="detail-body__content">
-            {entry.bodyMarkdown ? <SafeMarkdown source={entry.bodyMarkdown} /> : <p className="muted-note">A longer project story will be added here when available.</p>}
-            <CaseStudySections sections={entry.caseStudySections} />
+            <ExpandableProjectDetails>
+              {entry.bodyMarkdown ? <SafeMarkdown source={entry.bodyMarkdown} /> : <p className="muted-note">A longer project story will be added here when available.</p>}
+              <CaseStudySections sections={entry.caseStudySections} />
+            </ExpandableProjectDetails>
           </section>
         </div>
         {websiteScreenshots.length > 0 ? <section aria-labelledby="website-pages-title" className="detail-gallery website-screenshots">

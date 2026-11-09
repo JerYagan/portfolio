@@ -42,6 +42,7 @@ export async function GET(_request: Request, context: { params: Promise<{ slug: 
           caption: image.caption,
           sort_order: image.sort_order,
           media_role: image.media_role,
+          media_type: image.media_type,
           page_name: image.page_name,
           device_label: image.device_label,
         })),

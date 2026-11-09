@@ -55,7 +55,7 @@ export async function GET(_request: Request, context: RouteContext) {
   } else if (mediaWithMetadata.error) return adminFailure();
   else rawMedia = mediaWithMetadata.data as EditableMediaRow[] | null;
   const [media, thumbnailPreviewUrl] = await Promise.all([
-    Promise.all((rawMedia ?? []).map(async (item) => ({ ...item, page_name: item.page_name ?? null, device_label: item.device_label ?? null, preview_url: await signAdminPath(auth.client, item.object_path) }))),
+    Promise.all((rawMedia ?? []).map(async (item) => ({ ...item, media_role: item.object_path.toLowerCase().endsWith('.pdf') ? 'presentation_board' : item.media_role ?? 'supporting_image', page_name: item.page_name ?? null, device_label: item.device_label ?? null, preview_url: await signAdminPath(auth.client, item.object_path) }))),
     signAdminPath(auth.client, data.thumbnail_path),
   ]);
   const entryTagLinks = (data.entry_tags ?? []) as Array<{

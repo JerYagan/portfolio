@@ -80,7 +80,7 @@ export type PublicImage = { url: string; alt: string };
 export type PublicTag = TagRow;
 export type PortfolioMediaRole = 'presentation_board' | 'logo_variation' | 'supporting_image' | 'page_screenshot';
 export type WebsiteScreenshotDevice = 'desktop' | 'tablet' | 'mobile';
-export type PublicGalleryImage = PublicImage & { caption: string | null; sort_order: number; media_role: PortfolioMediaRole; page_name: string | null; device_label: WebsiteScreenshotDevice | null };
+export type PublicGalleryImage = PublicImage & { caption: string | null; sort_order: number; media_role: PortfolioMediaRole; page_name: string | null; device_label: WebsiteScreenshotDevice | null; media_type: 'image' | 'pdf' };
 export type PublicCaseStudySection = { heading: string; bodyMarkdown: string };
 
 export type PublicProfile = {
@@ -199,7 +199,7 @@ function safeSearchTerm(value: string): string {
 function parseSocialLinks(value: unknown): ProfileSocialLink[] {
   return asRecords(value).flatMap((item) => {
     if (typeof item.label !== 'string' || typeof item.url !== 'string' || !item.label.trim()) return [];
-    const url = safeUrl(item.url);
+    const url = safeUrl(item.url, true);
     return url ? [{ label: item.label.trim(), url }] : [];
   });
 }
@@ -470,8 +470,12 @@ export async function getPublishedEntryBySlug(slug: string): Promise<PublicEntry
     mediaRows = (mediaResult.data ?? []) as unknown as MediaRow[];
   }
   const media = await Promise.all(mediaRows.map(async (image) => {
+    if (image.object_path.toLowerCase().endsWith('.pdf')) {
+      const url = `/api/portfolio/entries/${encodeURIComponent(row.slug)}/pdf?path=${encodeURIComponent(image.object_path)}`;
+      return { url, alt: image.alt_text, caption: image.caption, sort_order: image.sort_order, media_role: 'presentation_board' as const, page_name: null, device_label: null, media_type: 'pdf' as const };
+    }
     const signedImage = await signImage(client, image.object_path, image.alt_text);
-    return signedImage ? { ...signedImage, caption: image.caption, sort_order: image.sort_order, media_role: image.media_role ?? 'supporting_image', page_name: image.page_name ?? null, device_label: image.device_label ?? null } : null;
+    return signedImage ? { ...signedImage, caption: image.caption, sort_order: image.sort_order, media_role: image.media_role ?? 'supporting_image', page_name: image.page_name ?? null, device_label: image.device_label ?? null, media_type: 'image' as const } : null;
   }));
   const tagRows = (tagsResult.data ?? []) as unknown as EntryTagRow[];
   const tags = tagRows.flatMap((row) => {

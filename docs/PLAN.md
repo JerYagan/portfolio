@@ -11,6 +11,74 @@ This checklist tracks implementation. Check an item only when the result exists 
 - [x] Keep owner name, biography, contact, socials, and stack as visible placeholders until the owner supplies details.
 - [x] Define the profile-first landing page, completion dates, curated technology selector, and Vercel deployment checklist.
 
+## 2026-11-09 — Profile portrait ratio and admin form overlap
+
+- [x] Lock the public landing-page portrait and placeholder to a 3:4 frame.
+- [x] Constrain the admin portrait file picker to its column so it cannot overlap the alternative-text field.
+- [ ] Verify public portrait ratio and admin profile form at desktop and mobile widths.
+
+## 2026-11-09 — Full-width category and contact section layouts
+
+- [x] Move each section heading above its content so both sections use the full page width.
+- [x] Show category cards in an even three-column desktop grid and contact cards in a full-width responsive grid.
+- [x] Keep each section stacked cleanly on mobile.
+- [ ] Verify final desktop/mobile layout in a browser.
+
+## 2026-11-09 — Profile contacts, home sections, and toolkit controls
+
+- [x] Redesign the landing page category section as responsive descriptive cards.
+- [x] Redesign contact/social links as cards with platform marks.
+- [x] Replace the profile social-links textarea with up to 20 editable platform/contact rows and allow email links.
+- [x] Limit public toolkit and learning groups to eight items by default with a “See all” / “Show less” control.
+- [ ] Verify profile editing, links, responsive cards, and toolkit expansion in a browser.
+
+## 2026-11-09 — Pinterest-style project gallery
+
+- [x] Balance images into explicit full-width columns by estimated loaded height.
+- [x] Use four desktop, three narrow-desktop/tablet, and two mobile columns with tighter gutters.
+- [x] Add subtle rounded corners and remove borders/shadows from gallery artwork.
+- [ ] Verify gallery spacing and image modal behavior in a browser at desktop and mobile widths.
+
+## 2026-11-09 — 15 MiB media uploads
+
+- [x] Raise client and server file-size validation to 15 MiB and keep JPEG, PNG, WebP, and AVIF support.
+- [x] Replace multipart uploads through Next.js with authenticated, path-scoped Supabase signed upload tickets and server-side finalization/byte validation.
+- [x] Raise the local Supabase bucket/global config and add an additive hosted bucket-limit migration.
+- [x] Update upload API, security, data model, architecture, testing, and decision documentation.
+- [ ] Apply `20261109010000_increase_portfolio_image_limit.sql` to the intended Supabase project and set its global Storage limit to at least 15 MiB.
+- [ ] Verify 15 MiB uploads and reject oversized, unsupported, malformed, or over-dimension images in a disposable development Supabase project.
+
+## 2026-11-09 — PDF presentation-board support
+
+- [x] Permit PDF uploads only for presentation-board media; keep thumbnails, avatars, and other gallery roles raster-only.
+- [x] Validate PDF size and header on the server after signed direct upload to Storage.
+- [x] Add a first-page PDF preview and an accessible full-viewport viewer with document scrolling.
+- [x] Add an additive migration for the bucket MIME type and a database constraint for PDF board-only media.
+- [x] Update the media model, API contract, security rules, product requirements, design system, and test plan.
+- [ ] Apply `20261109020000_pdf_presentation_boards.sql` to the intended Supabase project.
+- [ ] Verify upload, published rendering, private preview, scroll behavior, and modal close behavior with a multi-page PDF in a development project/browser.
+
+## 2026-11-09 — Upload feedback and custom PDF rendering
+
+- [x] Remove stale 8 MiB validation expectations and clarify that hosted Supabase bucket and global limits both need the 15 MiB setting.
+- [x] Add visible upload/finalize progress and finite request timeouts so transfer or save failures resolve instead of leaving Save pending.
+- [x] Hide reorder controls when there is no same-role item to move against.
+- [x] Replace the browser-native PDF viewer with a custom scrollable PDF.js canvas viewer.
+- [ ] Verify long upload feedback, >8 MiB uploads, and PDF rendering on desktop and mobile browsers.
+
+## 2026-11-09 — PDF preview reliability and long project details
+
+- [x] Stream authorized public/private PDF byte ranges through same-origin routes for PDF.js rendering.
+- [x] Keep move-up/move-down controls visible on gallery rows, including the first and last item.
+- [x] Collapse long project details initially and add accessible “See more” / “Show less” controls.
+- [ ] Verify PDFs render in public and private previews and that long Markdown details expand and collapse at mobile and desktop widths.
+
+## 2026-11-09 — Full-width presentation boards
+
+- [x] Support image or PDF presentation boards for standard and logofolio projects.
+- [x] Render all PDF pages inline at full project width above the gallery while keeping the optional fullscreen viewer.
+- [ ] Verify standard and logofolio image/PDF boards at desktop and mobile widths.
+
 ## Phase 1 — App foundation
 
 - [x] Initialize Next.js 16.4.5 App Router with React 19.3.1 and TypeScript 5.9.3; pin dependencies and create lockfile.

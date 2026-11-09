@@ -38,13 +38,17 @@
 
 ## File upload policy
 
-- Allow raster images only in v1: JPEG, PNG, WebP, and AVIF. Reject SVG and executable or ambiguous content types.
-- Maximum upload size: 8 MiB per image. Validate file extension, declared MIME type, and file signature when practical; never trust the browser-provided content type alone.
-- Cap the multipart request envelope at 9 MiB and consume it as a bounded stream before parsing so chunked requests cannot bypass the upload limit.
+- Allow JPEG, PNG, WebP, and AVIF images, plus PDF documents only as a presentation board. Reject SVG and executable or ambiguous content types.
+- Maximum upload size: 15 MiB per file. Validate the declared size and MIME type before issuing a signed upload token, then verify the stored file size and signature on the server before returning a usable preview path. Images must also pass format and dimension checks; PDFs must have a valid PDF header. Never trust browser-provided metadata alone.
+- Upload image bytes directly from the authenticated CMS browser to Supabase Storage with a server-issued, path-scoped signed upload token. Keep image bytes out of Next.js Route Handler request bodies because Vercel Functions cap request bodies at 4.5 MB. Ticket creation and finalization requests remain small, same-origin JSON requests.
+- Signed upload tokens are bearer capabilities valid for up to two hours. Issue them only after checking the owner session and same-origin request; generate UUID object paths server-side, use `upsert: false`, never log the token, and delete the object if server-side image verification fails.
+- Enforce the 15 MiB bucket limit in the SQL migration and local Supabase config. The hosted Supabase project's global Storage file-size limit must also be at least 15 MiB.
+- Enforce PDFs only on media rows whose role is `presentation_board`; reject them for avatars, thumbnails, logo variations, supporting images, and website page screenshots. Serve validated PDFs to the client-side PDF.js renderer, not through a native browser PDF viewer.
+- PDF byte-range endpoints must verify the public entry is published and its category visible, or require portfolio-admin authorization for a private preview. Stream only the referenced `presentation_board` object and never accept an arbitrary Storage URL from the client.
 - Generate object names server-side using UUIDs. Store under `portfolio/`; never accept arbitrary Storage paths from untrusted clients for upload.
 - Use a private Storage bucket. Enforce owner-only upload/update/delete in Storage RLS. Permit anon read/signed URL creation only when the object path is referenced by a published entry or public profile. An authenticated admin may read portfolio objects for CMS preview, including draft media. Never create a public object URL for a draft image.
 - Public pages generate signed URLs only after the database query confirms publication and visibility. Keep signed URL expiration longer than the response/page cache lifetime, or avoid serving cached responses after link expiry.
-- Image dimensions should be bounded to prevent excessive processing; set a maximum of 6000×6000 pixels.
+- Image dimensions should be bounded to prevent excessive processing; set a maximum of 6000×6000 pixels. This pixel-dimension rule does not apply to PDF pages.
 - Full-page website captures use the same validated image upload and private Storage bucket. Their page/device labels are bounded and server-validated; public signed URLs are only created for images attached to published entries.
 - When an entry or image is deleted, attempt idempotent object cleanup and surface cleanup failures for retry.
 

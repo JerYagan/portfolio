@@ -2,6 +2,8 @@
 
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { TechnologyMark } from '@/components/public/TechnologyMark';
+import { SocialLinkMark } from '@/components/public/SocialLinkMark';
+import { uploadPortfolioImage } from '@/lib/media/upload-image';
 import {
   normalizeStoredTechnologies,
   TECHNOLOGY_OPTIONS,
@@ -16,6 +18,12 @@ type Profile = {
   skills: StoredTechnology[]; social_links: Array<{ label: string; url: string }>;
 };
 type Envelope<T> = { data?: T; error?: { message?: string; fields?: Record<string, string> }; meta?: { cleanup_pending?: string[] } };
+
+const socialPlatforms = ['Email', 'LinkedIn', 'Behance', 'GitHub', 'Dribbble', 'Instagram', 'YouTube', 'Website', 'Other'] as const;
+
+function knownSocialPlatform(label: string) {
+  return socialPlatforms.find((platform) => platform.toLocaleLowerCase() === label.toLocaleLowerCase() && platform !== 'Other');
+}
 
 export function ProfileEditor({ initialProfile }: { initialProfile: Profile }) {
   const [profile, setProfile] = useState({ ...initialProfile, skills: normalizeStoredTechnologies(initialProfile.skills) });
@@ -56,7 +64,7 @@ export function ProfileEditor({ initialProfile }: { initialProfile: Profile }) {
   async function retryCleanup(paths: string[]) {
     const remaining: string[] = [];
     for (const object_path of paths) {
-      const response = await fetch('/api/admin/media', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ object_path }) }).catch(() => null);
+      const response = await fetch('/api/admin/media', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ object_path }), signal: AbortSignal.timeout(15_000) }).catch(() => null);
       if (!response?.ok) remaining.push(object_path);
     }
     setCleanupPaths(remaining);
@@ -64,26 +72,25 @@ export function ProfileEditor({ initialProfile }: { initialProfile: Profile }) {
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setPending(true); setMessage('');
+    event.preventDefault(); setPending(true); setMessage(avatarFile ? 'Uploading profile image…' : 'Saving profile…');
     const formElement = event.currentTarget;
     let uploadedPath = '';
     try {
       let avatarPath = profile.avatar_path;
       if (avatarFile) {
-        const form = new FormData(); form.set('file', avatarFile);
-        const upload = await fetch('/api/admin/media', { method: 'POST', body: form });
-        const uploadResult = await upload.json() as Envelope<{ object_path: string }>;
-        if (!upload.ok || !uploadResult.data) throw new Error(uploadResult.error?.message ?? 'Avatar could not be uploaded.');
-        avatarPath = uploadedPath = uploadResult.data.object_path;
+        setMessage('Uploading profile image…');
+        const uploadResult = await uploadPortfolioImage(avatarFile, 'avatar');
+        avatarPath = uploadedPath = uploadResult.object_path;
       }
       const payload = {
         display_name: profile.display_name, headline: profile.headline, bio: profile.bio,
         location: profile.location || null, contact_url: profile.contact_url || null,
         avatar_path: avatarPath, avatar_alt: avatarPath ? profile.avatar_alt : null,
         skills: profile.skills,
-        social_links: parseLinks((formElement.elements.namedItem('social_links') as HTMLTextAreaElement).value),
+        social_links: profile.social_links.filter((link) => link.url.trim()),
       };
-      const response = await fetch('/api/admin/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      setMessage('Saving profile details…');
+      const response = await fetch('/api/admin/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: AbortSignal.timeout(120_000) });
       const result = await response.json() as Envelope<Profile>;
       if (!response.ok || !result.data) {
         const details = result.error?.fields ? ` ${Object.entries(result.error.fields).map(([key, value]) => `${key}: ${value}`).join(' ')}` : '';
@@ -111,11 +118,11 @@ export function ProfileEditor({ initialProfile }: { initialProfile: Profile }) {
 
   return <form className="admin-form admin-profile-form" onSubmit={submit}>
     <section className="admin-panel"><div className="admin-panel-heading"><div><p className="admin-eyebrow">Public identity</p><h2>About you</h2></div></div>
-      <div className="admin-profile-grid"><div className="admin-avatar-control">{avatarPreview ? <img alt="" src={avatarPreview} /> : <div className="admin-avatar-empty">YN</div>}<label className="admin-file-picker">{avatarPreview ? 'Replace portrait' : 'Choose portrait'}<input accept="image/jpeg,image/png,image/webp,image/avif" onChange={changeAvatar} type="file" /></label>{avatarPreview ? <button className="admin-text-button admin-text-button--danger" onClick={() => { setAvatarFile(null); setAvatarPreview(''); setProfile((current) => ({ ...current, avatar_path: null, avatar_alt: null })); }} type="button">Remove portrait</button> : null}</div>
+      <div className="admin-profile-grid"><div className="admin-avatar-control">{avatarPreview ? <img alt="" src={avatarPreview} /> : <div className="admin-avatar-empty">YN</div>}<label className="admin-file-picker">{avatarPreview ? 'Replace portrait' : 'Choose portrait'}<input accept="image/jpeg,image/png,image/webp,image/avif" onChange={changeAvatar} type="file" /></label><p className="admin-field-note">JPEG, PNG, WebP, or AVIF. Up to 15 MiB.</p>{avatarPreview ? <button className="admin-text-button admin-text-button--danger" onClick={() => { setAvatarFile(null); setAvatarPreview(''); setProfile((current) => ({ ...current, avatar_path: null, avatar_alt: null })); }} type="button">Remove portrait</button> : null}</div>
         <div className="admin-stack"><label>Display name<input maxLength={120} onChange={(event) => setProfile((current) => ({ ...current, display_name: event.target.value }))} required value={profile.display_name} /></label><label>Headline<input maxLength={180} onChange={(event) => setProfile((current) => ({ ...current, headline: event.target.value }))} value={profile.headline} /></label>{avatarPreview ? <label>Portrait alternative text<input maxLength={300} onChange={(event) => setProfile((current) => ({ ...current, avatar_alt: event.target.value }))} required value={profile.avatar_alt ?? ''} /></label> : null}</div>
       </div>
       <label>Biography<textarea maxLength={12000} onChange={(event) => setProfile((current) => ({ ...current, bio: event.target.value }))} rows={8} value={profile.bio} /></label>
-      <div className="admin-form-grid"><label>Location<input maxLength={120} onChange={(event) => setProfile((current) => ({ ...current, location: event.target.value || null }))} value={profile.location ?? ''} /></label><label>Contact URL or email link<input onChange={(event) => setProfile((current) => ({ ...current, contact_url: event.target.value || null }))} placeholder="mailto:hello@example.test" value={profile.contact_url ?? ''} /></label></div>
+      <div className="admin-form-grid"><label>Location<input maxLength={120} onChange={(event) => setProfile((current) => ({ ...current, location: event.target.value || null }))} value={profile.location ?? ''} /></label></div>
     </section>
     <section className="admin-panel"><div className="admin-panel-heading"><div><p className="admin-eyebrow">A small, honest toolkit</p><h2>Technologies</h2><p className="admin-panel-intro">Choose the tools you want people to see, then mark whether you use them or are learning them.</p></div></div>
       <label className="admin-tech-search">Search the technology catalog<input autoComplete="off" onChange={(event) => setTechnologyQuery(event.target.value)} placeholder="Try ‘React’, ‘SEO’, or ‘Microsoft’" type="search" value={technologyQuery} /></label>
@@ -136,15 +143,27 @@ export function ProfileEditor({ initialProfile }: { initialProfile: Profile }) {
       </div>
       {legacySkills.length > 0 ? <div className="admin-legacy-skills"><h3>Older custom skills</h3><p className="admin-field-note">These were entered before the technology list. Keep them for now or remove them.</p>{legacySkills.map((skill) => <div className="admin-legacy-skill" key={`${skill.name}-${skill.group ?? ''}`}><span>{skill.name}{skill.group ? ` · ${skill.group}` : ''}</span><button className="admin-text-button admin-text-button--danger" onClick={() => setProfile((current) => ({ ...current, skills: current.skills.filter((item) => item !== skill) }))} type="button">Remove</button></div>)}</div> : null}
     </section>
-    <section className="admin-panel"><div className="admin-panel-heading"><div><p className="admin-eyebrow">Elsewhere</p><h2>Social links</h2></div></div><label>One per line: label | HTTPS URL<textarea defaultValue={profile.social_links.map((link) => `${link.label} | ${link.url}`).join('\n')} maxLength={10000} name="social_links" rows={7} /></label></section>
+    <section className="admin-panel"><div className="admin-panel-heading"><div><p className="admin-eyebrow">Keep in touch</p><h2>Contact and social links</h2><p className="admin-panel-intro">Add the places where people can reach you or find your work. Email links accept an email address; other links use HTTPS.</p></div></div>
+      <label className="admin-profile-form__primary-contact">Primary contact link<input autoComplete="url" onChange={(event) => setProfile((current) => ({ ...current, contact_url: event.target.value || null }))} placeholder="mailto:hello@example.com" value={profile.contact_url ?? ''} /></label>
+      <div className="admin-social-links">{profile.social_links.map((link, index) => {
+        const platform = knownSocialPlatform(link.label);
+        const isEmail = (platform ?? link.label) === 'Email';
+        const displayValue = isEmail ? link.url.replace(/^mailto:/i, '') : link.url;
+        return <div className="admin-social-link-row" key={`${link.label}-${index}`}>
+          <div className="admin-social-link-row__mark"><SocialLinkMark label={platform ?? link.label} url={link.url} /></div>
+          <label>Platform<select onChange={(event) => setProfile((current) => ({ ...current, social_links: current.social_links.map((item, itemIndex) => itemIndex === index ? { label: event.target.value === 'Other' ? '' : event.target.value, url: '' } : item) }))} value={platform ?? 'Other'}>{socialPlatforms.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
+          {!platform ? <label>Link name<input autoComplete="off" maxLength={40} onChange={(event) => setProfile((current) => ({ ...current, social_links: current.social_links.map((item, itemIndex) => itemIndex === index ? { ...item, label: event.target.value } : item) }))} placeholder="Portfolio, Mastodon…" value={link.label} /></label> : null}
+          <label className="admin-social-link-row__url">{isEmail ? 'Email address' : 'Profile URL'}<input autoComplete={isEmail ? 'email' : 'url'} maxLength={500} onChange={(event) => {
+            const value = event.target.value.trim();
+            const url = isEmail ? (value ? `mailto:${value.replace(/^mailto:/i, '')}` : '') : value;
+            setProfile((current) => ({ ...current, social_links: current.social_links.map((item, itemIndex) => itemIndex === index ? { ...item, url } : item) }));
+          }} placeholder={isEmail ? 'name@example.com' : 'https://…'} required value={displayValue} /></label>
+          <button aria-label={`Remove ${link.label || 'contact'} link`} className="admin-text-button admin-text-button--danger" onClick={() => setProfile((current) => ({ ...current, social_links: current.social_links.filter((_, itemIndex) => itemIndex !== index) }))} type="button">Remove</button>
+        </div>;
+      })}</div>
+      {profile.social_links.length < 20 ? <button className="admin-button admin-social-links__add" onClick={() => setProfile((current) => ({ ...current, social_links: [...current.social_links, { label: 'LinkedIn', url: '' }] }))} type="button">+ Add a contact or social link</button> : <p className="admin-field-note">You’ve reached the 20-link limit.</p>}
+    </section>
     {message ? <p className="admin-feedback" role="status">{message}</p> : null}{cleanupPaths.length ? <button className="admin-button" disabled={pending} onClick={() => void retryCleanup(cleanupPaths)} type="button">Retry cleanup ({cleanupPaths.length})</button> : null}
     <div className="admin-form-actions"><button className="admin-button admin-button--primary" disabled={pending} type="submit">{pending ? 'Saving…' : 'Save profile'}</button></div>
   </form>;
-}
-
-function parseLinks(value: string) {
-  return value.split('\n').map((line) => line.trim()).filter(Boolean).map((line) => {
-    const [label, ...url] = line.split('|').map((part) => part.trim());
-    return { label, url: url.join('|').trim() };
-  });
 }

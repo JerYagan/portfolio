@@ -10,7 +10,7 @@ Use Node's built-in `node:test` runner for pure functions and schema behavior. T
 
 - Category, entry, profile, and admin query schemas.
 - URL, alt-text, and mutually-exclusive tag input rules.
-- Image signature, MIME type, dimension, and 8 MiB size validation.
+- Image signature, MIME type, dimension, and 15 MiB size validation.
 
 The current unit suite does not verify Supabase queries, theme behavior, RLS, or browser interactions.
 
@@ -142,3 +142,17 @@ Report the exact commands run and their outcomes. Distinguish unit, database/RLS
 - Verify a published entry renders screenshot previews separately from its regular gallery; open a very tall image and scroll to both ends on desktop and mobile.
 - Verify close button, click outside the image, Escape, focus restoration, and previous/next controls; confirm no iframe or browser chrome is rendered and reduced-motion preferences are respected.
 - Migration `20261108060000_website_page_screenshots.sql` has not been applied to Supabase. No gallery upload or database write was performed for this change.
+
+## 15 MiB media uploads
+
+- Verify avatar, thumbnail, gallery, and website screenshot uploads up to 15 MiB use a signed ticket and upload directly to Supabase Storage; the image bytes must not be sent through a Next.js/Vercel request body.
+- Verify 15 MiB + 1 byte is rejected before ticket creation, unsupported MIME types are rejected, and uploaded content with invalid signatures or dimensions is removed during finalization.
+- Verify the hosted Supabase global Storage size limit is at least 15 MiB and apply `20261109010000_increase_portfolio_image_limit.sql` before using the new limit.
+
+## PDF presentation boards
+
+- Verify a valid PDF up to 15 MiB can be selected in the gallery, defaults to the presentation-board role, uploads through a signed ticket, and saves as `application/pdf`.
+- Verify PDF is rejected for profile avatars, thumbnails, logo variations, supporting images, and website screenshots; malformed PDF content is deleted during finalization.
+- Verify a published PDF board shows a first-page preview, opens a full-viewport viewer, scrolls through multiple pages, and closes with the close control, Escape, or clicking the darkened backdrop. Repeat in the private entry preview.
+- Verify public and private PDF byte-range endpoints reject unpublished, invisible, unreferenced, non-board, and non-PDF paths; confirm PDF.js preview loads without cross-origin browser PDF controls.
+- Apply `20261109020000_pdf_presentation_boards.sql` to the intended Supabase project before uploading PDFs.

@@ -29,6 +29,6 @@ test('image validation rejects unsupported formats, invalid signatures, and over
   assert.equal(validateImageUpload(pngHeader(6001, 100), 'image/png').code, 'IMAGE_DIMENSIONS_EXCEEDED');
 });
 
-test('image validation rejects files larger than 8 MiB before decoding', () => {
-  assert.equal(validateImageUpload(new Uint8Array((8 * 1024 * 1024) + 1), 'image/png').status, 413);
+test('image validation rejects files larger than 15 MiB before decoding', () => {
+  assert.equal(validateImageUpload(new Uint8Array((15 * 1024 * 1024) + 1), 'image/png').status, 413);
 });

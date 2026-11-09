@@ -38,7 +38,7 @@ Exactly one row, enforced by `id smallint primary key check (id = 1)`.
 | `avatar_path` | `text` | Nullable Storage object path under `portfolio/`; requires non-empty `avatar_alt` when set |
 | `avatar_alt` | `text` | Nullable until avatar path is set; accessible description when avatar is present |
 | `skills` | `jsonb` | Not null, default `[]`; ordered array of `{id, status}` catalog selections. `id` is a stable key from the maintained technology catalog; `status` is `known` or `learning`. Display name, discipline, and local logo path come from application catalog metadata. Readers temporarily accept legacy `{name, group?}` values to preserve older profile content. |
-| `social_links` | `jsonb` | Not null, default `[]`; JSON array of ordered `{label, url}` objects; API allows safe protocols only |
+| `social_links` | `jsonb` | Not null, default `[]`; JSON array of at most 20 ordered `{label, url}` objects; API allows HTTPS profile links and `mailto:` email addresses |
 | `updated_at` | `timestamptz` | Not null, default `now()` |
 
 ### `portfolio_categories`
@@ -90,7 +90,7 @@ Category names are data, not an enum. Entries reference category IDs. A category
 |---|---|---|
 | `id` | `uuid` | Primary key, default `gen_random_uuid()` |
 | `entry_id` | `uuid` | Not null, references entries with cascade delete |
-| `object_path` | `text` | Not null, unique Storage path under `portfolio/`, max 512 characters |
+| `object_path` | `text` | Not null, unique Storage path under `portfolio/`, max 512 characters; raster image extensions for all image roles, with `.pdf` allowed only for `presentation_board` |
 | `alt_text` | `text` | Not null, trimmed length 1–300 characters |
 | `caption` | `text` | Nullable, max 300 characters |
 | `media_role` | `text` | Not null, defaults to `supporting_image`; one of `presentation_board`, `logo_variation`, `supporting_image`, `page_screenshot` |
@@ -99,9 +99,9 @@ Category names are data, not an enum. Entries reference category IDs. A category
 | `sort_order` | `integer` | Not null, default `0` |
 | `created_at` | `timestamptz` | Not null, default `now()` |
 
-Images only in v1. The thumbnail may also appear in the gallery, but the gallery ordering is stored independently. Use object paths, not public URLs, so the URL can be derived from configured storage.
+JPG, PNG, WebP, and AVIF images are supported in v1. PDF documents are also supported only for the `presentation_board` role; they render in a scrollable PDF preview viewer. Thumbnails and profile avatars remain raster images. A thumbnail may also appear in the gallery, but gallery ordering is stored independently. Use object paths, not public URLs, so the URL can be derived from configured storage.
 
-For `logofolio` presentation, exactly zero or one `presentation_board` media item is rendered full-width before the tools section. `logo_variation` items render in the logo gallery and `supporting_image` items render in a separate supporting gallery; each gallery preserves image ratios and role-local `sort_order`. A partial unique index allows at most one presentation board per entry. The entry thumbnail remains the archive-card preview. The additive migration backfills existing logofolios by marking their first ordered image as the board and later images as logo variations, preserving the current appearance.
+For any presentation type, zero or one `presentation_board` media item may be rendered full-width above the project galleries. For `logofolio`, `logo_variation` items render in the logo gallery and `supporting_image` items render in a separate supporting gallery; standard presentations show other media in the project gallery. Each gallery preserves image ratios and role-local `sort_order`. A partial unique index allows at most one presentation board per entry. The entry thumbnail remains the archive-card preview. The additive migration backfills existing logofolios by marking their first ordered image as the board and later images as logo variations, preserving the current appearance.
 
 `page_screenshot` media items are shown in a dedicated Website pages section. Each requires a page name and device label; the full-page image is opened in a scrollable, image-only viewer. This role is independent of the entry's category so future disciplines can reuse it where appropriate.
 
@@ -123,6 +123,7 @@ Composite primary key (`entry_id`, `tag_id`). Both are foreign keys with cascade
 - Index entries by `(status, is_featured desc, sort_order, published_at desc)`, `(category_id, status, sort_order)`, and non-null `thumbnail_path`.
 - Index media by `(entry_id, sort_order)` and entry_tags by `tag_id`; a partial unique index on `portfolio_media(entry_id)` where `media_role = 'presentation_board'` permits at most one board per entry.
 - `page_screenshot` media requires `page_name` and `device_label`; non-screenshot media must leave both fields null.
+- `.pdf` object paths are valid only when `media_role = 'presentation_board'`; the additive PDF migration enforces this check and enables `application/pdf` in the private bucket.
 - `updated_at` is updated by a database trigger for `profile`, `portfolio_categories`, and `portfolio_entries`.
 - Entry slug and category slug are normalized and validated in the application and constrained unique in SQL.
 - `completed_on` uses PostgreSQL `date`, with strict `YYYY-MM-DD` calendar validation at the API boundary.
@@ -132,7 +133,7 @@ Composite primary key (`entry_id`, `tag_id`). Both are foreign keys with cascade
 
 ## Row Level Security
 
-Enable RLS on every public-schema table and the Storage bucket. Public/anon can select the profile, visible categories, published entries, their tags, and media attached to published entries only. Public has no insert/update/delete rights. `private.is_portfolio_admin()` is a restricted `SECURITY DEFINER` helper with an empty search path; it checks `auth.uid()` against `admin_users`, whose rows are not publicly readable. An authenticated user can manage content only when this check succeeds. Policies cover both `USING` and `WITH CHECK` for writes. The private `portfolio-media` bucket accepts JPEG, PNG, WebP, and AVIF up to 8 MiB. Storage object reads are allowed to anon only when the object path is referenced by a published entry's thumbnail/gallery or the public profile avatar. Authenticated admins can read any object under `portfolio/`; uploads, updates, and deletes require an authenticated `admin_users` member and a path inside `portfolio/`. Public page rendering creates short-lived signed URLs only for paths already authorized by these rules.
+Enable RLS on every public-schema table and the Storage bucket. Public/anon can select the profile, visible categories, published entries, their tags, and media attached to published entries only. Public has no insert/update/delete rights. `private.is_portfolio_admin()` is a restricted `SECURITY DEFINER` helper with an empty search path; it checks `auth.uid()` against `admin_users`, whose rows are not publicly readable. An authenticated user can manage content only when this check succeeds. Policies cover both `USING` and `WITH CHECK` for writes. The private `portfolio-media` bucket accepts JPEG, PNG, WebP, AVIF, and PDF up to 15 MiB. PDFs are allowed only on presentation-board media rows; profile avatars and entry thumbnails remain raster-only. Storage object reads are allowed to anon only when the object path is referenced by a published entry's thumbnail/gallery or the public profile avatar. Authenticated admins can read any object under `portfolio/`; uploads, updates, and deletes require an authenticated `admin_users` member and a path inside `portfolio/`. The server issues time-limited, path-scoped upload tokens only after admin authorization, then verifies uploaded bytes before returning a preview URL. Public page rendering creates short-lived signed URLs only for paths already authorized by these rules.
 
 ## Deletion and media lifecycle
 

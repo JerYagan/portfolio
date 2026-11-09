@@ -116,12 +116,12 @@ port = 54324
 [storage]
 enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
-file_size_limit = "8MiB"
+file_size_limit = "15MiB"
 
 [storage.buckets.portfolio-media]
 public = false
-file_size_limit = "8MiB"
-allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "image/avif"]
+file_size_limit = "15MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "image/avif", "application/pdf"]
 
 # Uncomment to configure local storage buckets
 # [storage.buckets.images]

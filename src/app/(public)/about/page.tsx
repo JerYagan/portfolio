@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { PortfolioImage } from '@/components/public/PortfolioImage';
 import { SafeMarkdown } from '@/components/public/SafeMarkdown';
 import { TechnologyList } from '@/components/public/TechnologyList';
+import { SocialLinkMark } from '@/components/public/SocialLinkMark';
 import { getPublicProfile } from '@/lib/data/portfolio';
 
 export const dynamic = 'force-dynamic';
@@ -48,8 +49,8 @@ export default async function AboutPage() {
             <p className="eyebrow">Say hello</p>
             <h2 id="contact-about-title">Contact &amp; links</h2>
             <ul className="profile-links">
-              {profile.contactUrl ? <li><a href={profile.contactUrl}>{profile.contactUrl.startsWith('mailto:') ? profile.contactUrl.slice(7) : 'Contact' }<span aria-hidden="true">↗</span></a></li> : null}
-              {profile.socialLinks.map((link) => <li key={`${link.label}-${link.url}`}><a href={link.url} rel="noreferrer noopener" target="_blank">{link.label}<span aria-hidden="true">↗</span></a></li>)}
+              {profile.contactUrl ? <li><a href={profile.contactUrl}><SocialLinkMark label={profile.contactUrl.startsWith('mailto:') ? 'Email' : 'Website'} url={profile.contactUrl} /><span>{profile.contactUrl.startsWith('mailto:') ? profile.contactUrl.slice(7) : 'Contact' }</span><span aria-hidden="true">↗</span></a></li> : null}
+              {profile.socialLinks.map((link) => <li key={`${link.label}-${link.url}`}><a href={link.url} rel={link.url.startsWith('mailto:') ? undefined : 'noreferrer noopener'} target={link.url.startsWith('mailto:') ? undefined : '_blank'}><SocialLinkMark label={link.label} url={link.url} /><span>{link.label}</span><span aria-hidden="true">↗</span></a></li>)}
             </ul>
             {!profile.contactUrl && profile.socialLinks.length === 0 ? <p className="muted-note">Contact details and social links will appear here once added.</p> : null}
           </section>

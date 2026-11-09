@@ -17,6 +17,7 @@ This is the anti-hallucination file. Use these technologies and exact versions w
 | React DOM type definitions | `@types/react-dom` | `19.3.0` |
 | Styling | Native CSS + CSS custom properties | No CSS framework. |
 | Validation | Zod | `4.6.7` |
+| PDF rendering | PDF.js (`pdfjs-dist`) | `6.5.438`; render document pages to canvases so the browser's built-in PDF toolbar is not shown. |
 
 ## Data and authentication
 
@@ -36,6 +37,7 @@ Use PostgreSQL through Supabase's SDK and RLS-backed API for application reads a
 - Use Node's built-in `node:test` runner for isolated pure functions; it comes with the pinned Node runtime and adds no package dependency.
 - Use browser-driven checks for critical public/admin journeys when implementation is ready. Select and pin a browser test package in `STACK.md` before adding it; no browser test dependency is approved by this baseline yet.
 - No component library, icon library, animation library, or third-party theme package is selected. Use accessible semantic HTML, small project-owned components, CSS tokens, and inline SVG icons only when needed.
+- PDF.js is the only approved document-rendering dependency; pin its exact version and keep the worker bundled with the app.
 
 ## Version references
 

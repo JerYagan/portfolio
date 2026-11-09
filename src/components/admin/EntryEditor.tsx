@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { TechnologyMark } from '@/components/public/TechnologyMark';
 import { TECHNOLOGY_OPTIONS, technologyIdForLabel, technologyOption, type TechnologyId } from '@/lib/tech-stack';
+import { uploadPortfolioImage } from '@/lib/media/upload-image';
 
 type Category = { id: string; name: string };
 type MediaRole = 'presentation_board' | 'logo_variation' | 'supporting_image' | 'page_screenshot';
@@ -116,24 +117,20 @@ export function EntryEditor({ categories, initialEntry }: { categories: Category
 
   function galleryChanged(event: ChangeEvent<HTMLInputElement>) {
     const files = [...(event.target.files ?? [])];
-    const mapped = files.map((file) => ({ key: crypto.randomUUID(), file, alt_text: '', caption: '', media_role: 'supporting_image' as MediaRole, page_name: '', device_label: 'desktop' as ScreenshotDevice, preview_url: URL.createObjectURL(file) }));
+    const mapped = files.map((file) => ({ key: crypto.randomUUID(), file, alt_text: '', caption: '', media_role: (isPdfFile(file) ? 'presentation_board' : 'supporting_image') as MediaRole, page_name: '', device_label: 'desktop' as ScreenshotDevice, preview_url: URL.createObjectURL(file) }));
     setNewGallery((current) => [...current, ...mapped]);
     event.target.value = '';
   }
 
-  async function upload(file: File) {
-    const form = new FormData(); form.set('file', file);
-    const response = await fetch('/api/admin/media', { method: 'POST', body: form });
-    const result = await response.json() as Envelope<{ object_path: string; preview_url: string | null }>;
-    if (!response.ok || !result.data) throw new Error(result.error?.message ?? 'An image could not be uploaded.');
-    return result.data;
+  async function upload(file: File, mediaRole: MediaRole | 'thumbnail') {
+    return uploadPortfolioImage(file, mediaRole);
   }
 
   async function cleanPaths(paths: string[]) {
     const remaining: string[] = [];
     for (const object_path of paths) {
       try {
-        const response = await fetch('/api/admin/media', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ object_path }) });
+        const response = await fetch('/api/admin/media', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ object_path }), signal: AbortSignal.timeout(15_000) });
         if (!response.ok) remaining.push(object_path);
       } catch { remaining.push(object_path); }
     }
@@ -142,22 +139,24 @@ export function EntryEditor({ categories, initialEntry }: { categories: Category
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setMessage(''); setPending(true);
+    event.preventDefault(); setMessage('Preparing project uploads…'); setPending(true);
     const uploaded: string[] = [];
     try {
       let thumbnailPath = entry.thumbnail_path;
       let thumbnailAlt = entry.thumbnail_alt;
       let nextThumbnailPreview = thumbnailPreview;
       if (newThumbnail) {
-        const result = await upload(newThumbnail);
+        setMessage('Uploading project thumbnail…');
+        const result = await upload(newThumbnail, 'thumbnail');
         uploaded.push(result.object_path);
         thumbnailPath = result.object_path;
         nextThumbnailPreview = result.preview_url ?? thumbnailPreview;
       }
 
       const gallery = [...entry.media];
-      for (const item of newGallery) {
-        const result = await upload(item.file);
+      for (const [index, item] of newGallery.entries()) {
+        setMessage(`Uploading gallery file ${index + 1} of ${newGallery.length}…`);
+        const result = await upload(item.file, item.media_role);
         uploaded.push(result.object_path);
         gallery.push({ object_path: result.object_path, alt_text: item.alt_text.trim(), caption: item.caption.trim() || null, media_role: item.media_role, page_name: item.media_role === 'page_screenshot' ? item.page_name.trim() : null, device_label: item.media_role === 'page_screenshot' ? item.device_label : null, sort_order: gallery.length, preview_url: result.preview_url });
       }
@@ -174,8 +173,9 @@ export function EntryEditor({ categories, initialEntry }: { categories: Category
         tag_names: entry.tags.map((tag) => tag.name),
         media: gallery.map(({ object_path, alt_text, caption, media_role, page_name, device_label }, sort_order) => ({ object_path, alt_text, caption, media_role, page_name: media_role === 'page_screenshot' ? page_name : null, device_label: media_role === 'page_screenshot' ? device_label : null, sort_order })),
       };
+      setMessage('Saving project details…');
       const response = await fetch(isEditing ? `/api/admin/entries/${initialEntry!.id}` : '/api/admin/entries', {
-        method: isEditing ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+        method: isEditing ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: AbortSignal.timeout(120_000),
       });
       const result = await response.json() as Envelope<Entry>;
       if (!response.ok || !result.data) {
@@ -246,11 +246,12 @@ export function EntryEditor({ categories, initialEntry }: { categories: Category
             <p className="admin-field-note">Maximum 12 sections, with headings up to 80 characters and body text up to 8,000 characters each.</p>
           </section>
           <section className="admin-subsection"><h2>Gallery</h2>
+            <p className="admin-field-note">Set one image or PDF to “Presentation board” to show it full-width above this project’s gallery. PDF files are automatically assigned that role.</p>
             <p className="admin-field-note">Choose “Website page screenshot” for a full-page capture. Add its page name and device size; visitors can scroll the complete image in a full-screen viewer.</p>
-            {entry.media.map((item, index) => <div className="admin-media-edit-row" key={item.id ?? item.object_path}>{item.preview_url ? <img alt="" src={item.preview_url} /> : <div className="admin-image-missing">Preview unavailable</div>}<div><label>Image role<select onChange={(event) => changeExistingMediaRole(index, event.target.value as MediaRole)} value={item.media_role}><option value='presentation_board'>Presentation board</option><option value='logo_variation'>Logo variation</option><option value='supporting_image'>Supporting image</option><option value='page_screenshot'>Website page screenshot</option></select></label>{item.media_role === 'page_screenshot' ? <><label>Page name<input maxLength={80} onChange={(event) => setField('media', entry.media.map((media, mediaIndex) => mediaIndex === index ? { ...media, page_name: event.target.value } : media))} placeholder="Home" required value={item.page_name ?? ''} /></label><label>Device size<select onChange={(event) => setField('media', entry.media.map((media, mediaIndex) => mediaIndex === index ? { ...media, device_label: event.target.value as ScreenshotDevice } : media))} required value={item.device_label ?? 'desktop'}><option value="desktop">Desktop</option><option value="tablet">Tablet</option><option value="mobile">Mobile</option></select></label></> : null}<label>Alternative text<input maxLength={300} onChange={(event) => setField('media', entry.media.map((media, mediaIndex) => mediaIndex === index ? { ...media, alt_text: event.target.value } : media))} required value={item.alt_text} /></label><label>Caption<input maxLength={300} onChange={(event) => setField('media', entry.media.map((media, mediaIndex) => mediaIndex === index ? { ...media, caption: event.target.value || null } : media))} value={item.caption ?? ''} /></label></div><div className="admin-gallery-actions"><button aria-label={`Move gallery image ${index + 1} up`} className="admin-text-button" disabled={!entry.media.slice(0, index).some((media) => media.media_role === item.media_role)} onClick={() => moveExistingMedia(index, -1)} type="button">↑ Up</button><button aria-label={`Move gallery image ${index + 1} down`} className="admin-text-button" disabled={!entry.media.slice(index + 1).some((media) => media.media_role === item.media_role)} onClick={() => moveExistingMedia(index, 1)} type="button">↓ Down</button><button className="admin-text-button admin-text-button--danger" onClick={() => setField('media', entry.media.filter((_, mediaIndex) => mediaIndex !== index))} type="button">Remove</button></div></div>)}
-            {newGallery.map((item, index) => <div className="admin-media-edit-row" key={item.key}><img alt="" src={item.preview_url} /><div><p className="admin-file-name">{item.file.name}</p><label>Image role<select onChange={(event) => changeNewMediaRole(item.key, event.target.value as MediaRole)} value={item.media_role}><option value='presentation_board'>Presentation board</option><option value='logo_variation'>Logo variation</option><option value='supporting_image'>Supporting image</option><option value='page_screenshot'>Website page screenshot</option></select></label>{item.media_role === 'page_screenshot' ? <><label>Page name<input maxLength={80} onChange={(event) => setNewGallery((current) => current.map((media) => media.key === item.key ? { ...media, page_name: event.target.value } : media))} placeholder="Home" required value={item.page_name} /></label><label>Device size<select onChange={(event) => setNewGallery((current) => current.map((media) => media.key === item.key ? { ...media, device_label: event.target.value as ScreenshotDevice } : media))} value={item.device_label}><option value="desktop">Desktop</option><option value="tablet">Tablet</option><option value="mobile">Mobile</option></select></label></> : null}<label>Alternative text<input maxLength={300} onChange={(event) => setNewGallery((current) => current.map((media) => media.key === item.key ? { ...media, alt_text: event.target.value } : media))} required value={item.alt_text} /></label><label>Caption<input maxLength={300} onChange={(event) => setNewGallery((current) => current.map((media) => media.key === item.key ? { ...media, caption: event.target.value } : media))} value={item.caption} /></label></div><div className="admin-gallery-actions"><button aria-label={`Move new gallery image ${index + 1} up`} className="admin-text-button" disabled={!newGallery.slice(0, index).some((media) => media.media_role === item.media_role)} onClick={() => moveNewMedia(index, -1)} type="button">↑ Up</button><button aria-label={`Move new gallery image ${index + 1} down`} className="admin-text-button" disabled={!newGallery.slice(index + 1).some((media) => media.media_role === item.media_role)} onClick={() => moveNewMedia(index, 1)} type="button">↓ Down</button><button className="admin-text-button admin-text-button--danger" onClick={() => setNewGallery((current) => current.filter((media) => media.key !== item.key))} type="button">Remove</button></div></div>)}
-            <label className="admin-file-picker">{entry.presentation === 'logofolio' ? 'Add presentation / logo images' : 'Add gallery images'}<input accept="image/jpeg,image/png,image/webp,image/avif" multiple onChange={galleryChanged} type="file" /></label>
-            <p className="admin-field-note">JPEG, PNG, WebP, or AVIF. Each image can be up to 8 MiB.</p>
+            {entry.media.map((item, index) => <div className="admin-media-edit-row" key={item.id ?? item.object_path}>{item.preview_url ? (item.object_path.toLowerCase().endsWith('.pdf') ? <AdminPdfPreview /> : <img alt="" src={item.preview_url} />) : <div className="admin-image-missing">Preview unavailable</div>}<div><label>Image role<select onChange={(event) => changeExistingMediaRole(index, event.target.value as MediaRole)} value={item.media_role}>{item.object_path.toLowerCase().endsWith('.pdf') ? <option value='presentation_board'>PDF presentation board</option> : <><option value='presentation_board'>Presentation board</option><option value='logo_variation'>Logo variation</option><option value='supporting_image'>Supporting image</option><option value='page_screenshot'>Website page screenshot</option></>}</select></label>{item.media_role === 'page_screenshot' ? <><label>Page name<input maxLength={80} onChange={(event) => setField('media', entry.media.map((media, mediaIndex) => mediaIndex === index ? { ...media, page_name: event.target.value } : media))} placeholder="Home" required value={item.page_name ?? ''} /></label><label>Device size<select onChange={(event) => setField('media', entry.media.map((media, mediaIndex) => mediaIndex === index ? { ...media, device_label: event.target.value as ScreenshotDevice } : media))} required value={item.device_label ?? 'desktop'}><option value="desktop">Desktop</option><option value="tablet">Tablet</option><option value="mobile">Mobile</option></select></label></> : null}<label>Alternative text<input maxLength={300} onChange={(event) => setField('media', entry.media.map((media, mediaIndex) => mediaIndex === index ? { ...media, alt_text: event.target.value } : media))} required value={item.alt_text} /></label><label>Caption<input maxLength={300} onChange={(event) => setField('media', entry.media.map((media, mediaIndex) => mediaIndex === index ? { ...media, caption: event.target.value || null } : media))} value={item.caption ?? ''} /></label></div><div className="admin-gallery-actions" data-reorderable={entry.media.filter((media) => media.media_role === item.media_role).length > 1}><button aria-label={`Move gallery image ${index + 1} up`} className="admin-text-button" disabled={!entry.media.slice(0, index).some((media) => media.media_role === item.media_role)} onClick={() => moveExistingMedia(index, -1)} type="button">↑ Up</button><button aria-label={`Move gallery image ${index + 1} down`} className="admin-text-button" disabled={!entry.media.slice(index + 1).some((media) => media.media_role === item.media_role)} onClick={() => moveExistingMedia(index, 1)} type="button">↓ Down</button><button className="admin-text-button admin-text-button--danger" onClick={() => setField('media', entry.media.filter((_, mediaIndex) => mediaIndex !== index))} type="button">Remove</button></div></div>)}
+            {newGallery.map((item, index) => <div className="admin-media-edit-row" key={item.key}>{isPdfFile(item.file) ? <AdminPdfPreview /> : <img alt="" src={item.preview_url} />}<div><p className="admin-file-name">{item.file.name}</p><label>Image role<select onChange={(event) => changeNewMediaRole(item.key, event.target.value as MediaRole)} value={item.media_role}>{isPdfFile(item.file) ? <option value='presentation_board'>PDF presentation board</option> : <><option value='presentation_board'>Presentation board</option><option value='logo_variation'>Logo variation</option><option value='supporting_image'>Supporting image</option><option value='page_screenshot'>Website page screenshot</option></>}</select></label>{item.media_role === 'page_screenshot' ? <><label>Page name<input maxLength={80} onChange={(event) => setNewGallery((current) => current.map((media) => media.key === item.key ? { ...media, page_name: event.target.value } : media))} placeholder="Home" required value={item.page_name} /></label><label>Device size<select onChange={(event) => setNewGallery((current) => current.map((media) => media.key === item.key ? { ...media, device_label: event.target.value as ScreenshotDevice } : media))} value={item.device_label}><option value="desktop">Desktop</option><option value="tablet">Tablet</option><option value="mobile">Mobile</option></select></label></> : null}<label>Alternative text<input maxLength={300} onChange={(event) => setNewGallery((current) => current.map((media) => media.key === item.key ? { ...media, alt_text: event.target.value } : media))} required value={item.alt_text} /></label><label>Caption<input maxLength={300} onChange={(event) => setNewGallery((current) => current.map((media) => media.key === item.key ? { ...media, caption: event.target.value } : media))} value={item.caption} /></label></div><div className="admin-gallery-actions" data-reorderable={newGallery.filter((media) => media.media_role === item.media_role).length > 1}><button aria-label={`Move new gallery image ${index + 1} up`} className="admin-text-button" disabled={!newGallery.slice(0, index).some((media) => media.media_role === item.media_role)} onClick={() => moveNewMedia(index, -1)} type="button">↑ Up</button><button aria-label={`Move new gallery image ${index + 1} down`} className="admin-text-button" disabled={!newGallery.slice(index + 1).some((media) => media.media_role === item.media_role)} onClick={() => moveNewMedia(index, 1)} type="button">↓ Down</button><button className="admin-text-button admin-text-button--danger" onClick={() => setNewGallery((current) => current.filter((media) => media.key !== item.key))} type="button">Remove</button></div></div>)}
+            <label className="admin-file-picker">{entry.presentation === 'logofolio' ? 'Add presentation / logo images' : 'Add gallery images'}<input accept="image/jpeg,image/png,image/webp,image/avif,application/pdf,.pdf" multiple onChange={galleryChanged} type="file" /></label>
+            <p className="admin-field-note">JPEG, PNG, WebP, or AVIF. PDF is also supported for presentation boards. Each file can be up to 15 MiB.</p>
           </section>
           <section className="admin-subsection"><h2>Tools used</h2>
             <p className="admin-field-note">Choose matching tools to show their logos on the public project page.</p>
@@ -283,6 +284,7 @@ export function EntryEditor({ categories, initialEntry }: { categories: Category
           <section className="admin-subsection"><h2>Thumbnail</h2>
             {thumbnailPreview ? <img className="admin-thumbnail-preview" alt="" src={thumbnailPreview} /> : <div className="admin-thumbnail-empty">No thumbnail selected</div>}
             <label className="admin-file-picker">{thumbnailPreview ? 'Replace thumbnail' : 'Choose thumbnail'}<input accept="image/jpeg,image/png,image/webp,image/avif" onChange={thumbnailChanged} type="file" /></label>
+            <p className="admin-field-note">JPEG, PNG, WebP, or AVIF. Up to 15 MiB.</p>
             {thumbnailPreview ? <button className="admin-text-button admin-text-button--danger" onClick={() => { setNewThumbnail(null); setThumbnailPreview(''); setField('thumbnail_path', null); setField('thumbnail_alt', null); }} type="button">Remove thumbnail</button> : null}
             {thumbnailPreview ? <label>Thumbnail alternative text<input maxLength={300} onChange={(event) => setField('thumbnail_alt', event.target.value)} required value={entry.thumbnail_alt ?? ''} /></label> : null}
           </section>
@@ -316,6 +318,14 @@ function parseTags(input: string) {
   return [...new Set(input.split(',').map((name) => name.trim()).filter(Boolean))].map((name) => ({ id: '', name, slug: '' }));
 }
 
+function AdminPdfPreview() {
+  return <div aria-label="PDF presentation board" className="admin-pdf-preview"><strong>PDF</strong><span>Presentation board</span></div>;
+}
+
 function slugify(value: string) {
   return value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 100).replace(/-$/g, '');
+}
+
+function isPdfFile(file: File) {
+  return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 }

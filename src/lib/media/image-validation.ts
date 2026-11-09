@@ -1,4 +1,6 @@
-const mimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
+import { MAX_PORTFOLIO_MEDIA_BYTES, PORTFOLIO_IMAGE_MIME_TYPES } from '@/lib/media/upload-limits';
+
+const mimeTypes = new Set<string>(PORTFOLIO_IMAGE_MIME_TYPES);
 
 export type ImageValidationResult =
   | { ok: true; extension: 'jpg' | 'png' | 'webp' | 'avif'; width: number; height: number }
@@ -90,8 +92,8 @@ export function validateImageUpload(bytes: Uint8Array, mimeType: string): ImageV
   if (!mimeTypes.has(mimeType)) {
     return { ok: false, status: 415, code: 'UNSUPPORTED_MEDIA_TYPE', message: 'Use a JPEG, PNG, WebP, or AVIF image.' };
   }
-  if (bytes.length > 8 * 1024 * 1024) {
-    return { ok: false, status: 413, code: 'PAYLOAD_TOO_LARGE', message: 'Images must be 8 MiB or smaller.' };
+  if (bytes.length > MAX_PORTFOLIO_MEDIA_BYTES) {
+    return { ok: false, status: 413, code: 'PAYLOAD_TOO_LARGE', message: 'Images must be 15 MiB or smaller.' };
   }
 
   const dimensions = imageDimensions(bytes, mimeType);

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { PortfolioImage } from '@/components/public/PortfolioImage';
 import { ProjectCard } from '@/components/public/ProjectCard';
 import { TechnologyList } from '@/components/public/TechnologyList';
+import { SocialLinkMark } from '@/components/public/SocialLinkMark';
 import { getPublicCategories, getPublicProfile, getPublishedEntries } from '@/lib/data/portfolio';
 
 export const dynamic = 'force-dynamic';
@@ -23,6 +24,10 @@ export default async function HomePage() {
     getPublishedEntries({ sort: 'latest', page: 1, limit: 8 }),
   ]);
   const intro = profile.bio || 'I make websites, visuals, and little digital experiments. This is where I keep the work I’m proud to share.';
+  const contactLinks = [
+    ...(profile.contactUrl ? [{ label: profile.contactUrl.startsWith('mailto:') ? 'Email' : 'Contact', url: profile.contactUrl }] : []),
+    ...profile.socialLinks,
+  ];
 
   return (
     <main className="home-page" id="main-content">
@@ -37,7 +42,7 @@ export default async function HomePage() {
             {profile.contactUrl ? <a className="button button--primary" href={profile.contactUrl}>Say hello <span aria-hidden="true">↗</span></a> : <Link className="button button--primary" href="/about">More about me <span aria-hidden="true">↗</span></Link>}
             <Link className="text-link" href="/work">Browse the work <span aria-hidden="true">↘</span></Link>
           </div>
-          {profile.socialLinks.length > 0 ? <ul aria-label="Social links" className="profile-page__socials">{profile.socialLinks.map((link) => <li key={`${link.label}-${link.url}`}><a href={link.url} rel="noreferrer noopener" target="_blank">{link.label}<span aria-hidden="true">↗</span></a></li>)}</ul> : null}
+          {profile.socialLinks.length > 0 ? <ul aria-label="Social links" className="profile-page__socials">{profile.socialLinks.map((link) => <li key={`${link.label}-${link.url}`}><a href={link.url} rel={link.url.startsWith('mailto:') ? undefined : 'noreferrer noopener'} target={link.url.startsWith('mailto:') ? undefined : '_blank'}><SocialLinkMark label={link.label} url={link.url} /><span>{link.label}</span></a></li>)}</ul> : null}
         </div>
         <aside aria-label="Tools and technologies" className="profile-page__toolkit">
           <p className="eyebrow">Things I work with</p>
@@ -79,21 +84,19 @@ export default async function HomePage() {
       </section>
 
       {categories.length > 0 ? <nav aria-label="Browse portfolio categories" className="home-category-section page-frame">
-        <div><p className="eyebrow">By discipline</p><h2>Browse by category</h2></div>
-        <ul>{categories.map((category) => <li key={category.id}><Link href={`/work/category/${category.slug}`}>{category.name}<span aria-hidden="true">↗</span></Link></li>)}</ul>
+        <div className="home-category-section__heading"><p className="eyebrow">By discipline</p><h2>Browse by category</h2><p>A few different corners of the work I make.</p></div>
+        <ul>{categories.map((category, index) => <li key={category.id}><span className="home-category-section__number">{String(index + 1).padStart(2, '0')}</span><div><Link href={`/work/category/${category.slug}`}>{category.name}<span aria-hidden="true">↗</span></Link>{category.description ? <p>{category.description}</p> : null}</div></li>)}</ul>
       </nav> : null}
 
       <section aria-labelledby="contact-title" className="contact-section page-frame" id="contact">
-        <div><p className="eyebrow">Drop me a note</p><h2 id="contact-title">I’d be glad to hear from you.</h2></div>
+        <div className="contact-section__intro"><p className="eyebrow">Drop me a note</p><h2 id="contact-title">I’d be glad to hear from you.</h2><p>For a project, a question, or just to say hello.</p></div>
         <div className="contact-section__details">
-          {profile.contactUrl ? (
-            <a className="contact-email" href={profile.contactUrl}>{profile.contactUrl.startsWith('mailto:') ? profile.contactUrl.slice(7) : 'Visit my contact link'} <span aria-hidden="true">↗</span></a>
-          ) : <p className="muted-note">Contact details will appear here once added.</p>}
-          {profile.socialLinks.length > 0 ? (
-            <ul aria-label="Social links" className="social-placeholder">
-              {profile.socialLinks.map((link) => <li key={`${link.label}-${link.url}`}><a href={link.url} rel="noreferrer noopener" target="_blank">{link.label}<span aria-hidden="true">↗</span></a></li>)}
-            </ul>
-          ) : null}
+          {contactLinks.length ? <ul aria-label="Contact and social links" className="contact-link-list">{contactLinks.map((link, index) => {
+            const isEmail = link.url.startsWith('mailto:');
+            const href = isEmail ? link.url : link.url;
+            const detail = isEmail ? link.url.slice(7) : link.url.replace(/^https:\/\/(www\.)?/i, '').replace(/\/$/, '');
+            return <li key={`${link.label}-${link.url}-${index}`}><a href={href} rel={isEmail ? undefined : 'noreferrer noopener'} target={isEmail ? undefined : '_blank'}><SocialLinkMark label={link.label} url={link.url} /><span className="contact-link-list__text"><strong>{link.label}</strong><small>{detail}</small></span><span aria-hidden="true" className="contact-link-list__arrow">↗</span></a></li>;
+          })}</ul> : <p className="muted-note">Contact details will appear here once added.</p>}
         </div>
       </section>
     </main>

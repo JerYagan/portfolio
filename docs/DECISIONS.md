@@ -2,6 +2,54 @@
 
 Short records of durable choices. Add newest decisions at the top.
 
+## 2026-11-09 — Use explicit columns for project image masonry
+
+- **Decision:** Use full-width responsive column containers for project galleries, preserving each image's natural aspect ratio with four desktop columns, three columns below 760px, and two mobile columns. Assign each item to the currently shortest column. Keep gutters compact, round image edges slightly, and omit tile borders and shadows.
+- **Reason:** CSS multi-column balancing produced only three occupied columns in the target browser despite a four-column count, leaving unused desktop width. Explicit containers make the column count and available width predictable while retaining masonry balance.
+- **Trade-off:** Items flow top-to-bottom within each column rather than left-to-right by visual row; source and keyboard order follow the visual columns.
+
+## 2026-11-09 — Use full-width rows for home category and contact sections
+
+- **Decision:** Place each section's heading above its content. Use a three-column desktop grid for category cards and a full-width responsive grid for contact links.
+- **Reason:** The side-by-side heading and content layout left unused page width and left a lone category card in a half-width row when the count was odd.
+- **Trade-off:** These sections use more vertical space while making their cards wider and more evenly distributed.
+
+## 2026-11-09 — Make profile contact links individually editable
+
+- **Decision:** Keep the existing ordered `social_links` JSON array and edit each item as a platform, label where custom, and URL. Support up to 20 HTTPS links or `mailto:` email links, with local or inline platform marks in the editor and public contact surfaces.
+- **Reason:** The existing data shape already supports multiple links. Replacing a textarea with repeatable fields improves usability without a schema migration or changing stored content.
+- **Trade-off:** Common platform marks are maintained locally in the app; less common services use a generic website mark until a dedicated local logo is added.
+
+## 2026-11-09 — Render PDF boards without browser chrome
+
+- **Decision:** Render PDF pages with the pinned PDF.js package inside the portfolio's scrollable preview dialog. Show the document pages and a close control without the browser's native PDF toolbar.
+- **Reason:** The native PDF viewer UI varies by browser and ignores some toolbar-hiding URL fragments.
+- **Trade-off:** Adds a pinned rendering dependency and uses browser canvas memory while the viewer is open.
+
+## 2026-11-09 — Stream PDF preview through authorized same-origin routes
+
+- **Decision:** PDF.js fetches byte ranges from same-origin public or admin endpoints. Each request verifies the published visible entry or admin role and the referenced presentation-board path, then streams the requested range from a short-lived Supabase signed URL.
+- **Reason:** Browser PDF.js fetches can be blocked by cross-origin Storage settings; the native iframe works but exposes browser-specific PDF controls.
+- **Trade-off:** PDF page-range reads pass through the app's streaming route. The route must preserve Range response headers and must never buffer the full document.
+
+## 2026-11-09 — Collapse long project details by default
+
+- **Decision:** Public project details initially show a 23rem excerpt with a fade and an accessible “See more” toggle. Short details omit the toggle; expanded details offer “Show less”.
+- **Reason:** Keep project pages scannable while allowing visitors to read the complete case study without navigating away.
+- **Trade-off:** The excerpt height is shared across desktop and mobile, and the toggle appears after the client measures the rendered Markdown.
+
+## 2026-11-09 — Allow PDFs as presentation boards
+
+- **Decision:** Accept PDF documents up to 15 MiB only when a media row uses the `presentation_board` role. Keep avatars, thumbnails, logo variations, supporting imagery, and website screenshots raster-only. Show an inline first-page preview and open the whole PDF in a scrollable viewer inside an accessible dialog.
+- **Reason:** The owner can upload an existing multi-page presentation board as authored instead of flattening it into a single image, while maintaining the current image workflows for other media.
+- **Trade-off:** The hosted Supabase bucket must allow `application/pdf` and the additive database migration must be applied.
+
+## 2026-11-09 — Raise media uploads to 15 MiB using signed direct uploads
+
+- **Decision:** Allow JPEG, PNG, WebP, AVIF, and presentation-board PDFs up to 15 MiB. The server authorizes each upload and issues a UUID-scoped, time-limited signed upload token; the browser transfers bytes directly to Supabase Storage, and an authenticated server finalization step validates the stored bytes before returning a preview URL.
+- **Reason:** Vercel Functions reject request bodies over 4.5 MB, so forwarding 15 MiB image bodies through the existing Route Handler cannot work in production. Direct upload avoids that platform limit while preserving server-side authorization and content validation.
+- **Trade-off:** Signed upload tokens are bearer capabilities valid for up to two hours. The server limits each token to a generated object path, storage bucket size, and one non-upsert upload; invalid files are deleted at finalization. Hosted Supabase global and bucket-level size limits must both allow 15 MiB.
+
 ## 2026-11-08 — Store a reusable entry presentation separately from its category
 
 - **Decision:** Add a constrained `presentation` value to entries (`standard` or `logofolio`). For logofolios, the first ordered gallery image is the tall presentation board and later images are logo variations; the archive thumbnail remains a separate card preview.

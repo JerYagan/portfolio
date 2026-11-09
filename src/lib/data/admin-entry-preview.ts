@@ -79,9 +79,13 @@ export async function getAdminEntryPreview(id: string): Promise<AdminEntryPrevie
     if (initialMediaResult.error) return { status: 'error' };
     rawMedia = (initialMediaResult.data ?? []) as unknown as MediaRow[];
   }
-  const media: PublicGalleryImage[] = (await Promise.all(rawMedia.map(async (image) => {
+  const media: PublicGalleryImage[] = (await Promise.all(rawMedia.map(async (image): Promise<PublicGalleryImage | null> => {
+    if (image.object_path.toLowerCase().endsWith('.pdf')) {
+      const url = `/api/admin/media/pdf?path=${encodeURIComponent(image.object_path)}`;
+      return { url, alt: image.alt_text, caption: image.caption, sort_order: image.sort_order, media_role: 'presentation_board' as const, page_name: null, device_label: null, media_type: 'pdf' as const };
+    }
     const url = await signAdminPath(client, image.object_path);
-    return url ? { url, alt: image.alt_text, caption: image.caption, sort_order: image.sort_order, media_role: image.media_role ?? 'supporting_image', page_name: image.page_name ?? null, device_label: image.device_label ?? null } : null;
+    return url ? { url, alt: image.alt_text, caption: image.caption, sort_order: image.sort_order, media_role: image.media_role ?? 'supporting_image', page_name: image.page_name ?? null, device_label: image.device_label ?? null, media_type: 'image' as const } : null;
   }))).filter((image): image is PublicGalleryImage => image !== null);
 
   const tagRows = (tagsResult.data ?? []) as unknown as EntryTagRow[];
